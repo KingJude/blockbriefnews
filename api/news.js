@@ -1,143 +1,21 @@
 const FEEDS = [
-  { name: "CoinDesk", url: "https://www.coindesk.com/arc/outboundfeeds/rss/" },
-  { name: "Decrypt", url: "https://decrypt.co/feed" },
-  { name: "Cointelegraph", url: "https://cointelegraph.com/rss" }
+  { name: "CoinDesk", url: "https://www.coindesk.com/arc/outboundfeeds/rss/", weight: 5 },
+  { name: "Decrypt", url: "https://decrypt.co/feed", weight: 3 },
+  { name: "Cointelegraph", url: "https://cointelegraph.com/rss", weight: 3 },
+  { name: "SEC", url: "https://www.sec.gov/news/pressreleases.rss", weight: 6, cryptoOnly: true }
 ];
 
 function decodeEntities(value = "") {
-  return value
-    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, "$1")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
-    .replace(/&#x2F;/gi, "/")
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)));
+  return value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, "$1").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&#x2F;/gi, "/").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n))).replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)));
 }
-
-function stripHtml(value = "") {
-  return decodeEntities(value)
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function tagValue(block, tags) {
-  for (const tag of tags) {
-    const escaped = tag.replace(":", "\\:");
-    const paired = new RegExp(`<${escaped}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${escaped}>`, "i");
-    const match = block.match(paired);
-    if (match) return decodeEntities(match[1]).trim();
-  }
-  return "";
-}
-
-function atomLink(block) {
-  const match = block.match(/<link[^>]+href=["']([^"']+)["'][^>]*>/i);
-  return match ? decodeEntities(match[1]).trim() : "";
-}
-
-function parseFeed(xml, source) {
-  const items = [];
-  const rssItems = xml.match(/<item\b[\s\S]*?<\/item>/gi) || [];
-  const atomEntries = xml.match(/<entry\b[\s\S]*?<\/entry>/gi) || [];
-  const blocks = rssItems.length ? rssItems : atomEntries;
-
-  for (const block of blocks.slice(0, 20)) {
-    const title = stripHtml(tagValue(block, ["title"]));
-    let link = stripHtml(tagValue(block, ["link", "guid"]));
-    if (!link && atomEntries.length) link = atomLink(block);
-    const description = stripHtml(tagValue(block, ["description", "content:encoded", "content", "summary"]));
-    const pubDate = stripHtml(tagValue(block, ["pubDate", "dc:date", "published", "updated"]));
-
-    if (!title || !link || !/^https?:\/\//i.test(link)) continue;
-
-    items.push({
-      source,
-      title,
-      description,
-      link,
-      pubDate: pubDate || new Date().toISOString()
-    });
-  }
-
-  return items;
-}
-
-function categoryFor(title, description) {
-  const text = `${title} ${description}`.toLowerCase();
-  if (/\bsolana\b|\bsol\b/.test(text)) return "solana";
-  if (/\bethereum\b|\beth\b/.test(text)) return "ethereum";
-  if (/\bbitcoin\b|\bbtc\b/.test(text)) return "bitcoin";
-  if (/\bsec\b|\bcftc\b|regulat|policy|congress|senate|court|law|etf/.test(text)) return "regulation";
-  return "markets";
-}
-
-async function fetchFeed(feed) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
-
-  try {
-    const response = await fetch(feed.url, {
-      signal: controller.signal,
-      headers: {
-        "User-Agent": "BlockBrief/1.0 (+https://blockbriefnews.com)",
-        "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml, */*"
-      }
-    });
-
-    if (!response.ok) throw new Error(`${feed.name} returned ${response.status}`);
-    const xml = await response.text();
-    return parseFeed(xml, feed.name);
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-module.exports = async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Cache-Control", "s-maxage=180, stale-while-revalidate=600");
-
-  if (req.method === "OPTIONS") {
-    res.status(204).end();
-    return;
-  }
-
-  if (req.method !== "GET") {
-    res.status(405).json({ error: "Method not allowed" });
-    return;
-  }
-
-  const settled = await Promise.allSettled(FEEDS.map(fetchFeed));
-  const merged = [];
-  const errors = [];
-
-  settled.forEach((result, index) => {
-    if (result.status === "fulfilled") merged.push(...result.value);
-    else errors.push(`${FEEDS[index].name}: ${result.reason?.message || "feed unavailable"}`);
-  });
-
-  const seen = new Set();
-  const items = merged
-    .map(item => ({ ...item, category: categoryFor(item.title, item.description) }))
-    .filter(item => {
-      const key = item.title.toLowerCase().replace(/\s+/g, " ").trim();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
-    .slice(0, 36);
-
-  res.status(items.length ? 200 : 502).json({
-    ok: items.length > 0,
-    updatedAt: new Date().toISOString(),
-    count: items.length,
-    items,
-    errors
-  });
-};
+function stripHtml(value = "") { return decodeEntities(value).replace(/<script[\s\S]*?<\/script>/gi," ").replace(/<style[\s\S]*?<\/style>/gi," ").replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim(); }
+function tagValue(block,tags){ for(const tag of tags){ const escaped=tag.replace(":","\\:"); const m=block.match(new RegExp(`<${escaped}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${escaped}>`,"i")); if(m)return decodeEntities(m[1]).trim(); } return ""; }
+function atomLink(block){ const m=block.match(/<link[^>]+href=["']([^"']+)["'][^>]*>/i); return m?decodeEntities(m[1]).trim():""; }
+function parseFeed(xml,feed){ const rss=xml.match(/<item\b[\s\S]*?<\/item>/gi)||[], atom=xml.match(/<entry\b[\s\S]*?<\/entry>/gi)||[], blocks=rss.length?rss:atom, items=[]; for(const block of blocks.slice(0,25)){ const title=stripHtml(tagValue(block,["title"])); let link=stripHtml(tagValue(block,["link","guid"])); if(!link&&atom.length)link=atomLink(block); const description=stripHtml(tagValue(block,["description","content:encoded","content","summary"])); const pubDate=stripHtml(tagValue(block,["pubDate","dc:date","published","updated"])); if(title&&/^https?:\/\//i.test(link))items.push({source:feed.name,sourceWeight:feed.weight||0,title,description,link,pubDate:pubDate||new Date().toISOString()}); } return items; }
+function categoryFor(title,description){ const t=`${title} ${description}`.toLowerCase(); if(/\bsolana\b|\bsol\b/.test(t))return"solana"; if(/\bethereum\b|\beth\b/.test(t))return"ethereum"; if(/\bbitcoin\b|\bbtc\b/.test(t))return"bitcoin"; if(/\bsec\b|\bcftc\b|regulat|policy|congress|senate|court|law|etf|legislat|enforcement/.test(t))return"regulation"; return"markets"; }
+const CRYPTO_RE=/bitcoin|\bbtc\b|ethereum|\beth\b|solana|\bsol\b|crypto|digital asset|blockchain|stablecoin|tokeni[sz]|defi|web3|coinbase|binance|kraken|exchange-traded fund|\betf\b/;
+function normalizeTitle(s=""){ return s.toLowerCase().replace(/[^a-z0-9 ]/g," ").replace(/\b(the|a|an|to|of|for|and|in|on|as|with|at|by|from)\b/g," ").replace(/\s+/g," ").trim(); }
+function similarity(a,b){ const A=new Set(normalizeTitle(a).split(" ").filter(x=>x.length>2)),B=new Set(normalizeTitle(b).split(" ").filter(x=>x.length>2)); if(!A.size||!B.size)return 0; let common=0; for(const x of A)if(B.has(x))common++; return common/Math.min(A.size,B.size); }
+function importance(item){ const t=`${item.title} ${item.description}`.toLowerCase(); let s=item.sourceWeight||0; const rules=[[/hack|exploit|breach|stolen|attack|rollback|outage|bankrupt|insolven|fraud/,8],[/sec|cftc|regulat|law|legislat|court|congress|senate|government|enforcement/,7],[/etf|federal reserve|fed |interest rate|inflation|treasury/,6],[/bitcoin|ethereum|solana/,4],[/binance|coinbase|kraken|tether|circle|stablecoin/,4],[/billion|million|record|surge|plunge|rally|selloff|liquidat/,3]]; for(const [r,n] of rules)if(r.test(t))s+=n; const age=(Date.now()-new Date(item.pubDate).getTime())/36e5; if(Number.isFinite(age))s+=Math.max(0,6-Math.min(age,24)/4); return s; }
+async function fetchFeed(feed){ const c=new AbortController(),timer=setTimeout(()=>c.abort(),8000); try{ const r=await fetch(feed.url,{signal:c.signal,headers:{"User-Agent":"BlockBrief/1.1 (+https://blockbriefnews.com)","Accept":"application/rss+xml, application/atom+xml, application/xml, text/xml, */*"}}); if(!r.ok)throw new Error(`${feed.name} returned ${r.status}`); let items=parseFeed(await r.text(),feed); if(feed.cryptoOnly)items=items.filter(x=>CRYPTO_RE.test(`${x.title} ${x.description}`.toLowerCase())); return items; } finally{clearTimeout(timer);} }
+module.exports=async function handler(req,res){ res.setHeader("Access-Control-Allow-Origin","*"); res.setHeader("Cache-Control","s-maxage=180, stale-while-revalidate=600"); if(req.method==="OPTIONS")return res.status(204).end(); if(req.method!=="GET")return res.status(405).json({error:"Method not allowed"}); const settled=await Promise.allSettled(FEEDS.map(fetchFeed)),merged=[],errors=[]; settled.forEach((r,i)=>r.status==="fulfilled"?merged.push(...r.value):errors.push(`${FEEDS[i].name}: ${r.reason?.message||"feed unavailable"}`)); merged.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate)); const unique=[]; for(const item of merged){ if(unique.some(x=>similarity(x.title,item.title)>=0.72))continue; unique.push(item); } const items=unique.map(x=>({...x,category:categoryFor(x.title,x.description),score:importance(x)})).sort((a,b)=>b.score-a.score||new Date(b.pubDate)-new Date(a.pubDate)).slice(0,36).map(({sourceWeight,...x})=>x); res.status(items.length?200:502).json({ok:items.length>0,updatedAt:new Date().toISOString(),count:items.length,items,errors}); };
