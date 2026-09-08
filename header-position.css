@@ -1,0 +1,6 @@
+/* Keep the navigation anchored inside mobile and embedded browser viewports. */
+.site-header{position:fixed!important;top:0;left:0;right:0;z-index:1000;box-sizing:border-box;width:100%;margin:0;padding-top:env(safe-area-inset-top,0px);background:#020711!important}
+.site-header-spacer{display:block;height:var(--site-header-height,99px);flex:none;pointer-events:none}
+html{scroll-padding-top:calc(var(--site-header-height,99px) + 12px)}
+body{overflow-x:clip}
+@media(max-width:900px){.site-header-spacer{height:var(--site-header-height,172px)}}
