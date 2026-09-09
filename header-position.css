@@ -3,4 +3,9 @@
 .site-header-spacer{display:block;height:var(--site-header-height,99px);flex:none;pointer-events:none}
 html{scroll-padding-top:calc(var(--site-header-height,99px) + 12px)}
 body{overflow-x:clip}
+.skip-link{position:fixed;top:8px;left:8px;z-index:2000;transform:translateY(-200%);padding:12px 18px;background:#fff;color:#07111f;border-radius:8px;font-weight:700}
+.skip-link:focus{transform:none}
+a:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid #24dfff;outline-offset:4px}
+.filter,.fried-pause,.language-control select{min-height:44px}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 @media(max-width:900px){.site-header-spacer{height:var(--site-header-height,172px)}}

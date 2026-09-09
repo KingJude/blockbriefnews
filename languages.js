@@ -1,6 +1,9 @@
 (() => {
   'use strict';
   const dictionary = {
+    'Skip to content':['跳转到正文','Saltar al contenido'],
+    'Refresh unavailable. Showing previously loaded headlines.':['暂时无法刷新，正在显示此前加载的新闻。','No se pudo actualizar. Se muestran los titulares cargados anteriormente.'],
+    'Read the original report →':['阅读原始报道 →','Leer la noticia original →'],
     'World Clock':['世界时钟','Reloj mundial'], 'World clock':['世界时钟','Reloj mundial'], 'Main navigation':['主导航','Navegación principal'],
     'Track the time across the cities you follow.':['查看您关注的城市时间。','Consulta la hora de las ciudades que sigues.'],
     'Theme':['主题','Tema'], 'Midnight Blue':['午夜蓝','Azul medianoche'], 'Daylight':['日光','Luz del día'], 'Gold':['金色','Dorado'], 'Ocean':['海洋','Océano'], 'Violet':['紫罗兰','Violeta'], 'Emerald':['翡翠绿','Esmeralda'],
@@ -16,7 +19,7 @@
     'Worldwide search is temporarily unavailable. Showing matching saved choices; press Search to retry.':['全球搜索暂不可用。当前显示匹配的预设城市；点击搜索重试。','La búsqueda mundial no está disponible. Se muestran opciones guardadas; pulsa Buscar para reintentar.'],
     'This browser does not recognize that time zone. Try a nearby city.':['此浏览器无法识别该时区。请尝试附近城市。','Este navegador no reconoce esa zona horaria. Prueba una ciudad cercana.'],
     'Added':['已添加','Añadida'], '+ Add':['+ 添加','+ Añadir'], 'Add a city to see its local time.':['添加城市以查看当地时间。','Añade una ciudad para ver su hora local.'],
-    'City data:':['城市数据：','Datos de ciudades:'], 'Time from your device · Updates every second':['时间来自您的设备 · 每秒更新','Hora de tu dispositivo · Se actualiza cada segundo'],
+    'City data:':['城市数据：','Datos de ciudades:'], 'Time from your device · Updates every minute':['时间来自您的设备 · 每分钟更新','Hora de tu dispositivo · Se actualiza cada minuto'],
     'Daytime hours':['白天','Horario diurno'], 'Nighttime hours':['夜间','Horario nocturno'],
     'FRIED Crypto. Built by the community. Powered by the community. Visit crispyfriedchicken.net (opens in a new tab)':['FRIED 加密货币。由社区共建，由社区驱动。访问 crispyfriedchicken.net（在新标签页打开）','FRIED Crypto. Creado e impulsado por la comunidad. Visita crispyfriedchicken.net (se abre en otra pestaña)'],
     'Bitcoin':['比特币','Bitcoin'], 'Ethereum':['以太坊','Ethereum'], 'Solana':['Solana','Solana'],

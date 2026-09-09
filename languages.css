@@ -8,4 +8,4 @@
 html[lang="zh-CN"] .hero h1{line-height:1.15;letter-spacing:0}
 html[lang="zh-CN"] .eyebrow,html[lang="zh-CN"] .tag{letter-spacing:.06em}
 @media(max-width:900px){.language-control{order:0}.site-header .nav-links{order:1}.site-header .brand-logo{max-width:calc(92vw - 150px)}.site-header .nav{height:auto;min-height:72px;flex-wrap:wrap}.site-header .back{font-size:.85rem}.language-control select{max-width:112px}}
-@media(max-width:360px){.language-control{gap:3px}.language-control select{max-width:100px;padding:7px 5px}.site-header .brand-logo{max-width:calc(92vw - 130px)}}
+@media(max-width:360px){.language-control{gap:3px}.language-control select{max-width:100px;padding:7px 5px}.site-header .brand-logo{max-width:calc(92vw - 150px)}}
