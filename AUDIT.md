@@ -35,7 +35,7 @@ Scope: public homepage, five topic pages, transient story briefs, news and FRIED
 ## Limits and remaining opportunities
 
 - This is a source review and functional deployment audit, not a penetration test or WCAG certification. Real iPhone/Telegram WebView testing, Lighthouse/Core Web Vitals field data, Search Console indexing and private Vercel logs were not available.
-- The original logo and icon PNGs are each about 0.94 MB. A separately reviewed responsive-image optimization would reduce transfer cost while keeping the selected artwork. No image redesign was made.
+- Follow-up: added lossless WebP delivery for the logo and browser icon. Decoded RGBA pixels exactly match the original PNGs. Logo: 942,399 → 680,460 bytes (27.8% smaller). Icon: 959,873 → 703,094 bytes (26.8% smaller). Content-hashed assets receive long-lived caching. PNG fallback, Apple touch icon, social images and original artwork remain available. Smaller responsive variants could reduce transfer further in a future asset pass.
 - News cards are currently client-rendered and transient briefs are intentionally noindex. Durable, server-rendered article URLs and editorial archives would be a larger SEO architecture change. No claim of Google indexing or ranking gains is made.
 - Quote/feed providers can still have outages or rate limits. The changes improve failure behavior without substituting fabricated news or prices.
 - The CSP is deliberately limited; it does not yet restrict scripts. A strict script policy would require moving inline scripts or maintaining hashes.
