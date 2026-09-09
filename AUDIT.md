@@ -38,4 +38,11 @@ Scope: public homepage, five topic pages, transient story briefs, news and FRIED
 - Follow-up: added lossless WebP delivery for the logo and browser icon. Decoded RGBA pixels exactly match the original PNGs. Logo: 942,399 → 680,460 bytes (27.8% smaller). Icon: 959,873 → 703,094 bytes (26.8% smaller). Content-hashed assets receive long-lived caching. PNG fallback, Apple touch icon, social images and original artwork remain available. Smaller responsive variants could reduce transfer further in a future asset pass.
 - News cards are currently client-rendered and transient briefs are intentionally noindex. Durable, server-rendered article URLs and editorial archives would be a larger SEO architecture change. No claim of Google indexing or ranking gains is made.
 - Quote/feed providers can still have outages or rate limits. The changes improve failure behavior without substituting fabricated news or prices.
-- The CSP is deliberately limited; it does not yet restrict scripts. A strict script policy would require moving inline scripts or maintaining hashes.
+- Follow-up: the CSP now restricts scripts to this origin and SHA-256 hashes of existing inline scripts. Unapproved inline scripts, HTML event handlers and dynamic evaluation are blocked. The script policy does not restrict CSS or data-provider connections. Run `node scripts/update-csp.cjs --check` before publishing; regenerate hashes after inline HTML script/JSON-LD edits. This is a manual check, not a CI gate.
+
+## Script-policy follow-up verification
+
+- All 14 regression tests passed, including stale-policy detection and hash whitespace handling.
+- Preview browser probe: same-origin script executed; unapproved inline JavaScript, dynamic evaluation and an inline event handler were blocked. The preview-only Vercel feedback toolbar was also blocked as a third-party script.
+- Under enforcement, the homepage loaded live headlines and four prices. English, Chinese and Spanish switching, filters, ad pause, clock theme/time format, city search and full-screen entry/exit worked. All five topic scripts rendered their results or an honest empty state.
+- Temporary enforcement probes are removed before production. The policy is scoped to script execution; it is not a complete penetration test or a guarantee against all injection vulnerabilities.
