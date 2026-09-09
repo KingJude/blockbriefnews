@@ -1,0 +1,5 @@
+<!doctype html><html lang="en"><head><meta name="robots" content="noindex,nofollow"><title>CSP preview verification</title></head><body>
+<h1>CSP verification</h1><p id="allowed">Allowed script: waiting</p><p id="inline">Unapproved inline script: blocked</p><p id="eval">Dynamic evaluation: waiting</p><p id="handler">Inline event handler: blocked</p><p id="attempt">Handler click: waiting</p>
+<button id="try-handler" onclick="document.getElementById('handler').textContent='Inline event handler: FAILED'">Test event handler</button><ul id="violations"></ul>
+<script src="/_csp-probe.js"></script><script>document.getElementById('inline').textContent='Unapproved inline script: FAILED';</script>
+</body></html>
