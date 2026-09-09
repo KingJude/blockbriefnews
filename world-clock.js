@@ -140,6 +140,7 @@
       `;
       this.shadowRoot.append(shellStyle, this.content, this.dialog);
       this.onFullscreenChange = () => this.syncFullscreen();
+      this.onLanguageChange = () => this.render();
       this.dialog.addEventListener('close', () => this.restoreInline());
       this.selected = cities.slice(0,6); this.hour12 = true; this.theme = 'midnight';
       try {
@@ -155,12 +156,14 @@
     connectedCallback() {
       clearInterval(this.timer);
       document.addEventListener('fullscreenchange', this.onFullscreenChange);
+      document.addEventListener('blockbrief-language-change', this.onLanguageChange);
       this.render(); this.timer = setInterval(() => this.tick(),1000);
     }
     disconnectedCallback() {
       clearInterval(this.timer);
       clearTimeout(this.searchTimer); this.searchVersion = (this.searchVersion || 0) + 1;
       document.removeEventListener('fullscreenchange', this.onFullscreenChange);
+      document.removeEventListener('blockbrief-language-change', this.onLanguageChange);
       if(this.dialog.open) this.dialog.close();
       this.restoreInline(false);
     }
@@ -299,7 +302,7 @@
         const remove=card.querySelector('.remove');remove.setAttribute('aria-label',`Remove ${city[0]}`);
         remove.onclick=()=>{this.selected=this.selected.filter(c=>c!==city);this.saveSettings();this.render();this.shadowRoot.querySelector('#city').focus();};
         grid.append(card);
-        return {card,time:new Intl.DateTimeFormat('en-US',{timeZone:city[2],hour:'2-digit',minute:'2-digit',hour12:this.hour12}),date:new Intl.DateTimeFormat('en-US',{timeZone:city[2],weekday:'short',month:'short',day:'numeric'}),parts:new Intl.DateTimeFormat('en-GB',{timeZone:city[2],hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23',timeZoneName:'shortOffset'})};
+        return {card,time:new Intl.DateTimeFormat(document.documentElement.lang || 'en-US',{timeZone:city[2],hour:'2-digit',minute:'2-digit',hour12:this.hour12}),date:new Intl.DateTimeFormat(document.documentElement.lang || 'en-US',{timeZone:city[2],weekday:'short',month:'short',day:'numeric'}),parts:new Intl.DateTimeFormat('en-GB',{timeZone:city[2],hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23',timeZoneName:'shortOffset'})};
       });
       if(!this.views.length){const empty=document.createElement('p');empty.className='empty';empty.textContent='Add a city to see its local time.';grid.append(empty);}
       const input = this.shadowRoot.querySelector('#city');
