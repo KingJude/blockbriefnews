@@ -299,7 +299,7 @@
         const remove=card.querySelector('.remove');remove.setAttribute('aria-label',`Remove ${city[0]}`);
         remove.onclick=()=>{this.selected=this.selected.filter(c=>c!==city);this.saveSettings();this.render();this.shadowRoot.querySelector('#city').focus();};
         grid.append(card);
-        return {card,time:new Intl.DateTimeFormat('en-US',{timeZone:city[2],hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:this.hour12}),date:new Intl.DateTimeFormat('en-US',{timeZone:city[2],weekday:'short',month:'short',day:'numeric'}),parts:new Intl.DateTimeFormat('en-GB',{timeZone:city[2],hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23',timeZoneName:'shortOffset'})};
+        return {card,time:new Intl.DateTimeFormat('en-US',{timeZone:city[2],hour:'2-digit',minute:'2-digit',hour12:this.hour12}),date:new Intl.DateTimeFormat('en-US',{timeZone:city[2],weekday:'short',month:'short',day:'numeric'}),parts:new Intl.DateTimeFormat('en-GB',{timeZone:city[2],hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23',timeZoneName:'shortOffset'})};
       });
       if(!this.views.length){const empty=document.createElement('p');empty.className='empty';empty.textContent='Add a city to see its local time.';grid.append(empty);}
       const input = this.shadowRoot.querySelector('#city');
