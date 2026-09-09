@@ -20,6 +20,22 @@
   class WorldClock extends HTMLElement {
     constructor() {
       super(); this.attachShadow({mode:'open'});
+      this.content = document.createElement('div');
+      this.dialog = document.createElement('dialog');
+      this.dialog.setAttribute('aria-label', 'World clock full screen');
+      const shellStyle = document.createElement('style');
+      shellStyle.textContent = `
+        :host(:fullscreen){width:100%;height:100%;overflow:auto;background:#020711}
+        dialog{position:fixed;inset:0;width:100%;height:100%;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:#020711;overflow:auto;overscroll-behavior:contain}
+        dialog::backdrop{background:#020711}
+        .expanded .widget{max-width:none;min-height:100vh;min-height:100dvh;border:0;border-radius:0;padding:max(20px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left))}
+        .expanded .grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
+        .expanded .time{font-size:clamp(28px,3vw,40px)}
+        .expanded .clockrow{flex-wrap:wrap}
+      `;
+      this.shadowRoot.append(shellStyle, this.content, this.dialog);
+      this.onFullscreenChange = () => this.syncFullscreen();
+      this.dialog.addEventListener('close', () => this.restoreInline());
       this.selected = cities.slice(0,6); this.hour12 = true; this.light = false;
       try {
         const saved = JSON.parse(localStorage.getItem('blockbrief-world-clock-v1'));
@@ -29,13 +45,70 @@
         }
       } catch {}
     }
-    connectedCallback() { clearInterval(this.timer); this.render(); this.timer = setInterval(() => this.tick(),1000); }
-    disconnectedCallback() { clearInterval(this.timer); }
+    connectedCallback() {
+      clearInterval(this.timer);
+      document.addEventListener('fullscreenchange', this.onFullscreenChange);
+      this.render(); this.timer = setInterval(() => this.tick(),1000);
+    }
+    disconnectedCallback() {
+      clearInterval(this.timer);
+      document.removeEventListener('fullscreenchange', this.onFullscreenChange);
+      if(this.dialog.open) this.dialog.close();
+      this.restoreInline(false);
+    }
+    syncFullscreen() {
+      const expanded = document.fullscreenElement === this || this.dialog.open;
+      this.content.classList.toggle('expanded', expanded);
+      const button = this.shadowRoot.querySelector('#fullscreen');
+      if(button) {
+        button.textContent = expanded ? 'Exit full screen' : 'Full screen';
+        button.setAttribute('aria-label', expanded ? 'Exit world clock full screen' : 'Open world clock full screen');
+        button.setAttribute('aria-pressed', String(expanded));
+      }
+    }
+    restoreInline(focus = true) {
+      // The content stays inside this component, so controls and clock timers survive.
+      if(this.dialog.open) return;
+      if(this.content.parentNode === this.dialog) this.shadowRoot.insertBefore(this.content, this.dialog);
+      if(this.previousOverflow !== undefined) {
+        document.documentElement.style.overflow = this.previousOverflow;
+        this.previousOverflow = undefined;
+      }
+      this.syncFullscreen();
+      if(focus && this.isConnected) this.shadowRoot.querySelector('#fullscreen')?.focus({preventScroll:true});
+    }
+    async toggleFullscreen() {
+      if(this.fullscreenBusy) return;
+      this.fullscreenBusy = true;
+      try {
+        if(document.fullscreenElement === this) {
+          await document.exitFullscreen();
+        } else if(this.dialog.open) {
+          this.dialog.close();
+          this.restoreInline();
+        } else {
+          let entered = false;
+          if(document.fullscreenEnabled && this.requestFullscreen) {
+            try { await this.requestFullscreen(); entered = true; } catch {}
+          }
+          if(!entered && this.isConnected) {
+            this.dialog.append(this.content);
+            this.dialog.showModal();
+            this.previousOverflow = document.documentElement.style.overflow;
+            document.documentElement.style.overflow = 'hidden';
+          }
+        }
+      } finally {
+        this.fullscreenBusy = false;
+        this.syncFullscreen();
+        this.shadowRoot.querySelector('#fullscreen')?.focus({preventScroll:true});
+      }
+    }
     saveSettings() {
       try { localStorage.setItem('blockbrief-world-clock-v1', JSON.stringify({zones:this.selected.map(city=>city[2]),hour12:this.hour12,light:this.light})); } catch {}
     }
     render() {
-      this.shadowRoot.innerHTML = `<style>
+      this.content.innerHTML = `<style>
         :host{display:block;color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
         *{box-sizing:border-box}.widget{--bg:#020711;--card:#07111f;--ink:#f8fbff;--muted:#a6b1c5;--line:#193952;--accent:#24dfff;background:var(--bg);color:var(--ink);padding:clamp(18px,4vw,30px);border:1px solid var(--line);border-radius:22px;max-width:1180px;margin:auto}
         .widget.light{--bg:#f4f8fc;--card:#fff;--ink:#17283c;--muted:#51647c;--line:#cbd8e6;--accent:#006776;color-scheme:light}
@@ -46,7 +119,7 @@
         @media(max-width:440px){h2{font-size:22px}.widget{padding:16px}.tools{width:100%}.time{font-size:28px}.bottom{align-items:flex-start;flex-direction:column}}
       </style>
       <section class="widget ${this.light?'light':''}" aria-label="World clock">
-        <header><div><p class="eyebrow">GLOBAL CRYPTO · LOCAL TIME</p><h2>World clock</h2><p class="sub">Track the time across the cities you follow.</p></div><div class="tools"><button id="format" aria-label="Use ${this.hour12?'24':'12'}-hour time">${this.hour12?'12':'24'}-hour</button><button id="theme" aria-label="Switch to ${this.light?'dark':'light'} theme">${this.light?'Dark':'Light'} theme</button></div></header>
+        <header><div><p class="eyebrow">GLOBAL CRYPTO · LOCAL TIME</p><h2>World clock</h2><p class="sub">Track the time across the cities you follow.</p></div><div class="tools"><button id="format" aria-label="Use ${this.hour12?'24':'12'}-hour time">${this.hour12?'12':'24'}-hour</button><button id="theme" aria-label="Switch to ${this.light?'dark':'light'} theme">${this.light?'Dark':'Light'} theme</button><button id="fullscreen" type="button" aria-label="Open world clock full screen" aria-pressed="false">Full screen</button></div></header>
         <div class="grid"></div>
         <div class="bottom"><form><label for="city">Add city</label><select id="city"></select><button type="submit">+ Add</button></form><span>Time from your device · Updates every second</span></div>
       </section>`;
@@ -67,6 +140,8 @@
       this.shadowRoot.querySelector('form').onsubmit=e=>{e.preventDefault();const city=cities.find(c=>c[2]===select.value);if(city&&!this.selected.some(c=>c[2]===city[2])){this.selected.push(city);this.saveSettings();this.render();this.shadowRoot.querySelector('#city').focus();}};
       this.shadowRoot.querySelector('#format').onclick=()=>{this.hour12=!this.hour12;this.saveSettings();this.render();this.shadowRoot.querySelector('#format').focus();};
       this.shadowRoot.querySelector('#theme').onclick=()=>{this.light=!this.light;this.saveSettings();this.render();this.shadowRoot.querySelector('#theme').focus();};
+      this.shadowRoot.querySelector('#fullscreen').onclick=()=>this.toggleFullscreen();
+      this.syncFullscreen();
       this.tick();
     }
     tick(){
