@@ -1,6 +1,24 @@
 (() => {
   'use strict';
   const dictionary = {
+    'World Clock':['世界时钟','Reloj mundial'], 'World clock':['世界时钟','Reloj mundial'], 'Main navigation':['主导航','Navegación principal'],
+    'Track the time across the cities you follow.':['查看您关注的城市时间。','Consulta la hora de las ciudades que sigues.'],
+    'Theme':['主题','Tema'], 'Midnight Blue':['午夜蓝','Azul medianoche'], 'Daylight':['日光','Luz del día'], 'Gold':['金色','Dorado'], 'Ocean':['海洋','Océano'], 'Violet':['紫罗兰','Violeta'], 'Emerald':['翡翠绿','Esmeralda'],
+    '12-hour':['12小时制','12 horas'], '24-hour':['24小时制','24 horas'], 'Use 24-hour time':['使用24小时制','Usar formato de 24 horas'], 'Use 12-hour time':['使用12小时制','Usar formato de 12 horas'],
+    'Full screen':['全屏','Pantalla completa'], 'Exit full screen':['退出全屏','Salir de pantalla completa'],
+    'World clock full screen':['世界时钟全屏','Reloj mundial en pantalla completa'], 'Open world clock full screen':['全屏打开世界时钟','Abrir reloj mundial en pantalla completa'], 'Exit world clock full screen':['退出世界时钟全屏','Salir del reloj mundial en pantalla completa'],
+    'Add city':['添加城市','Añadir ciudad'], 'Search':['搜索','Buscar'], 'Find a world clock city':['查找世界时钟城市','Buscar una ciudad para el reloj'], 'Matching cities':['匹配的城市','Ciudades coincidentes'],
+    'Type a city, e.g. General Santos':['输入城市，例如 General Santos','Escribe una ciudad, p. ej. General Santos'],
+    'Type at least 2 letters, then choose a matching city.':['输入至少2个字符，然后选择匹配的城市。','Escribe al menos 2 caracteres y elige una ciudad.'],
+    'Searching cities…':['正在搜索城市…','Buscando ciudades…'],
+    'Choose a city below. Add a country or region to narrow your search.':['请选择下方城市。添加国家或地区可缩小搜索范围。','Elige una ciudad. Añade un país o región para acotar la búsqueda.'],
+    'No matching cities found. Try another spelling or a nearby city.':['未找到匹配的城市。请尝试其他拼写或附近城市。','No se encontraron ciudades. Prueba otra forma de escribir el nombre o una ciudad cercana.'],
+    'Worldwide search is temporarily unavailable. Showing matching saved choices; press Search to retry.':['全球搜索暂不可用。当前显示匹配的预设城市；点击搜索重试。','La búsqueda mundial no está disponible. Se muestran opciones guardadas; pulsa Buscar para reintentar.'],
+    'This browser does not recognize that time zone. Try a nearby city.':['此浏览器无法识别该时区。请尝试附近城市。','Este navegador no reconoce esa zona horaria. Prueba una ciudad cercana.'],
+    'Added':['已添加','Añadida'], '+ Add':['+ 添加','+ Añadir'], 'Add a city to see its local time.':['添加城市以查看当地时间。','Añade una ciudad para ver su hora local.'],
+    'City data:':['城市数据：','Datos de ciudades:'], 'Time from your device · Updates every second':['时间来自您的设备 · 每秒更新','Hora de tu dispositivo · Se actualiza cada segundo'],
+    'Daytime hours':['白天','Horario diurno'], 'Nighttime hours':['夜间','Horario nocturno'],
+    'FRIED Crypto. Built by the community. Powered by the community. Visit crispyfriedchicken.net (opens in a new tab)':['FRIED 加密货币。由社区共建，由社区驱动。访问 crispyfriedchicken.net（在新标签页打开）','FRIED Crypto. Creado e impulsado por la comunidad. Visita crispyfriedchicken.net (se abre en otra pestaña)'],
     'Bitcoin':['比特币','Bitcoin'], 'Ethereum':['以太坊','Ethereum'], 'Solana':['Solana','Solana'],
     'Markets':['市场','Mercados'], 'Regulation':['监管','Regulación'], 'Sources':['新闻来源','Fuentes'],
     'bitcoin':['比特币','Bitcoin'], 'ethereum':['以太坊','Ethereum'], 'solana':['Solana','Solana'], 'markets':['市场','Mercados'], 'regulation':['监管','Regulación'],
@@ -60,12 +78,12 @@
   select.value = locale;
   const feed = document.querySelector('#newsGrid, #grid, #story');
   const note = document.createElement('p');
-  note.className = 'language-note';
+  note.className = feed?.id === 'story' ? 'language-note wrap' : 'language-note';
   note.textContent = 'Publisher headlines and articles remain in their original language.';
   if (feed) feed.before(note);
   const texts = new WeakMap(), attributes = new WeakMap();
   // Publisher headlines and summaries are not UI strings and must stay intact.
-  const skip = 'script,style,select,.language-control,.card h2,.card h3,.card p,.lead h2,.lead p,.mini h3,.story h1,.summary';
+  const skip = 'script,style,.language-control,.card h2,.card h3,.card p,.lead h2,.lead p,.mini h3,.story h1,.summary';
   function translate(value) {
     if (locale === 'en') return value;
     const i = locale === 'zh-CN' ? 0 : 1;
@@ -78,6 +96,8 @@
     if (/^Live headlines · updated /.test(trimmed)) return trimmed.replace('Live headlines · updated ', i === 0 ? '实时新闻 · 更新于 ' : 'Noticias en directo · Actualizado a las ');
     if (/^Read original at .+ →$/.test(trimmed)) return trimmed.replace('Read original at ', i === 0 ? '阅读原文：' : 'Leer original en ');
     if (/^[+-]?[\d.]+% 24h$/.test(trimmed)) return trimmed.replace('24h', i === 0 ? '24小时' : '24 h');
+    if (/^(Remove |Already added: |Add )/.test(trimmed)) return trimmed.replace(/^(Remove |Already added: |Add )/, p => ({'Remove ':['移除 ','Quitar '],'Already added: ':['已添加：','Ya añadida: '],'Add ':['添加 ','Añadir ']}[p][i]));
+    if (/ added\.$/.test(trimmed)) return trimmed.replace(' added.', i === 0 ? ' 已添加。' : ': ciudad añadida.');
     return value.replace(/\b(\d+)([mhd]) ago\b/g, (_, n, unit) => i === 0 ? `${n}${{m:'分钟',h:'小时',d:'天'}[unit]}前` : `hace ${n} ${{m:'min',h:'h',d:'d'}[unit]}`);
   }
   function updateText(node) {
@@ -95,22 +115,34 @@
     observer.disconnect();
     document.documentElement.lang = locale;
     note.hidden = locale === 'en';
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const roots = [document.body, ...Array.from(document.querySelectorAll('world-clock-widget')).map(el => el.shadowRoot).filter(Boolean)];
+    for (const root of roots) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     while (walker.nextNode()) updateText(walker.currentNode);
-    for (const el of document.querySelectorAll('[aria-label]')) {
+    for (const el of root.querySelectorAll('[aria-label], [placeholder]')) {
       if (el.closest('.language-control')) continue;
-      const value = el.getAttribute('aria-label'), previous = attributes.get(el);
+      for (const attr of ['aria-label', 'placeholder']) {
+      if (!el.hasAttribute(attr)) continue;
+      const cache = attributes.get(el) || {};
+      const value = el.getAttribute(attr), previous = cache[attr];
       const source = previous && value === previous.output ? previous.source : value;
       const output = translate(source);
-      if (value !== output) el.setAttribute('aria-label', output);
-      attributes.set(el, {source, output});
+      if (value !== output) el.setAttribute(attr, output);
+      cache[attr] = {source, output}; attributes.set(el, cache);
+      }
     }
-    observer.observe(document.body, {subtree:true, childList:true, characterData:true, attributes:true, attributeFilter:['aria-label']});
+    observer.observe(root, {subtree:true, childList:true, characterData:true, attributes:true, attributeFilter:['aria-label','placeholder']});
+    }
+  }
+  function changeLanguage() {
+    document.documentElement.lang = locale;
+    document.dispatchEvent(new CustomEvent('blockbrief-language-change'));
+    apply();
   }
   select.addEventListener('change', () => {
     locale = supported.includes(select.value) ? select.value : 'en';
     try { localStorage.setItem('blockbrief-language', locale); } catch {}
-    apply();
+    changeLanguage();
   });
-  apply();
+  changeLanguage();
 })();
