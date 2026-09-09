@@ -17,6 +17,86 @@
     ['Chicago','United States','America/Chicago'],['Toronto','Canada','America/Toronto'],
     ['Vancouver','Canada','America/Vancouver'],['São Paulo','Brazil','America/Sao_Paulo']
   ];
+  const themes = [
+  {
+    "id": "midnight",
+    "name": "Midnight Blue",
+    "scheme": "dark",
+    "colors": [
+      "#020711",
+      "#07111f",
+      "#f8fbff",
+      "#a6b1c5",
+      "#193952",
+      "#24dfff"
+    ]
+  },
+  {
+    "id": "daylight",
+    "name": "Daylight",
+    "scheme": "light",
+    "colors": [
+      "#f4f8fc",
+      "#ffffff",
+      "#17283c",
+      "#51647c",
+      "#cbd8e6",
+      "#006776"
+    ]
+  },
+  {
+    "id": "gold",
+    "name": "Gold",
+    "scheme": "dark",
+    "colors": [
+      "#120f08",
+      "#211a0e",
+      "#fff8e8",
+      "#cdbd9b",
+      "#66502a",
+      "#ffd16a"
+    ]
+  },
+  {
+    "id": "ocean",
+    "name": "Ocean",
+    "scheme": "dark",
+    "colors": [
+      "#031c2b",
+      "#082e42",
+      "#effbff",
+      "#a3cbd9",
+      "#23586a",
+      "#61def4"
+    ]
+  },
+  {
+    "id": "violet",
+    "name": "Violet",
+    "scheme": "dark",
+    "colors": [
+      "#120d24",
+      "#211736",
+      "#faf5ff",
+      "#c2afd9",
+      "#57416f",
+      "#ce9bff"
+    ]
+  },
+  {
+    "id": "emerald",
+    "name": "Emerald",
+    "scheme": "dark",
+    "colors": [
+      "#061b15",
+      "#0d2c23",
+      "#f0fff8",
+      "#a5cabc",
+      "#2c5c49",
+      "#66e8ac"
+    ]
+  }
+];
   class WorldClock extends HTMLElement {
     constructor() {
       super(); this.attachShadow({mode:'open'});
@@ -25,9 +105,9 @@
       this.dialog.setAttribute('aria-label', 'World clock full screen');
       const shellStyle = document.createElement('style');
       shellStyle.textContent = `
-        :host(:fullscreen){width:100%;height:100%;overflow:auto;background:#020711}
-        dialog{position:fixed;inset:0;width:100%;height:100%;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:#020711;overflow:auto;overscroll-behavior:contain}
-        dialog::backdrop{background:#020711}
+        :host(:fullscreen){width:100%;height:100%;overflow:auto;background:var(--clock-bg,#020711)}
+        dialog{position:fixed;inset:0;width:100%;height:100%;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:var(--clock-bg,#020711);overflow:auto;overscroll-behavior:contain}
+        dialog::backdrop{background:var(--clock-bg,#020711)}
         .expanded .widget{max-width:none;min-height:100vh;min-height:100dvh;border:0;border-radius:0;padding:max(20px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left))}
         .expanded .grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
         .expanded .time{font-size:clamp(28px,3vw,40px)}
@@ -36,12 +116,13 @@
       this.shadowRoot.append(shellStyle, this.content, this.dialog);
       this.onFullscreenChange = () => this.syncFullscreen();
       this.dialog.addEventListener('close', () => this.restoreInline());
-      this.selected = cities.slice(0,6); this.hour12 = true; this.light = false;
+      this.selected = cities.slice(0,6); this.hour12 = true; this.theme = 'midnight';
       try {
         const saved = JSON.parse(localStorage.getItem('blockbrief-world-clock-v1'));
         if(saved && Array.isArray(saved.zones)) {
           this.selected = [...new Set(saved.zones)].map(zone => cities.find(city => city[2] === zone)).filter(Boolean);
-          this.hour12 = saved.hour12 !== false; this.light = saved.light === true;
+          this.hour12 = saved.hour12 !== false;
+          this.theme = themes.some(t => t.id === saved.theme) ? saved.theme : saved.light === true ? 'daylight' : 'midnight';
         }
       } catch {}
     }
@@ -105,21 +186,33 @@
       }
     }
     saveSettings() {
-      try { localStorage.setItem('blockbrief-world-clock-v1', JSON.stringify({zones:this.selected.map(city=>city[2]),hour12:this.hour12,light:this.light})); } catch {}
+      try { localStorage.setItem('blockbrief-world-clock-v1', JSON.stringify({zones:this.selected.map(city=>city[2]),hour12:this.hour12,theme:this.theme,light:this.theme==='daylight'})); } catch {}
+    }
+    applyTheme() {
+      const theme = themes.find(t => t.id === this.theme) || themes[0];
+      this.theme = theme.id;
+      this.style.setProperty('--clock-bg', theme.colors[0]);
+      const widget = this.shadowRoot.querySelector('.widget');
+      if(widget) widget.dataset.theme = theme.id;
     }
     render() {
       this.content.innerHTML = `<style>
         :host{display:block;color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
         *{box-sizing:border-box}.widget{--bg:#020711;--card:#07111f;--ink:#f8fbff;--muted:#a6b1c5;--line:#193952;--accent:#24dfff;background:var(--bg);color:var(--ink);padding:clamp(18px,4vw,30px);border:1px solid var(--line);border-radius:22px;max-width:1180px;margin:auto}
-        .widget.light{--bg:#f4f8fc;--card:#fff;--ink:#17283c;--muted:#51647c;--line:#cbd8e6;--accent:#006776;color-scheme:light}
+        .widget[data-theme="midnight"]{--bg:#020711;--card:#07111f;--ink:#f8fbff;--muted:#a6b1c5;--line:#193952;--accent:#24dfff;color-scheme:dark}
+        .widget[data-theme="daylight"]{--bg:#f4f8fc;--card:#ffffff;--ink:#17283c;--muted:#51647c;--line:#cbd8e6;--accent:#006776;color-scheme:light}
+        .widget[data-theme="gold"]{--bg:#120f08;--card:#211a0e;--ink:#fff8e8;--muted:#cdbd9b;--line:#66502a;--accent:#ffd16a;color-scheme:dark}
+        .widget[data-theme="ocean"]{--bg:#031c2b;--card:#082e42;--ink:#effbff;--muted:#a3cbd9;--line:#23586a;--accent:#61def4;color-scheme:dark}
+        .widget[data-theme="violet"]{--bg:#120d24;--card:#211736;--ink:#faf5ff;--muted:#c2afd9;--line:#57416f;--accent:#ce9bff;color-scheme:dark}
+        .widget[data-theme="emerald"]{--bg:#061b15;--card:#0d2c23;--ink:#f0fff8;--muted:#a5cabc;--line:#2c5c49;--accent:#66e8ac;color-scheme:dark}
         header,.tools,.bottom{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
         .eyebrow{font-size:10px;font-weight:750;letter-spacing:.18em;color:var(--accent);margin:0 0 6px}.clock-brand{display:flex;align-items:center;gap:9px;letter-spacing:.04em;font-size:13px;margin-bottom:10px}.clock-brand img{width:30px;height:30px;object-fit:contain;flex-shrink:0}h2{font-size:25px;letter-spacing:-.7px;margin:0}.sub{font-size:12px;color:var(--muted);margin:7px 0 0}
-        button,select{font:inherit;font-size:12px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink);padding:10px 12px;min-height:42px}button{cursor:pointer}button:hover{border-color:var(--accent)}button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.tools{gap:7px}
+        button,select{font:inherit;font-size:12px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink);padding:10px 12px;min-height:42px}button{cursor:pointer}button:hover{border-color:var(--accent)}button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.tools{gap:7px}.theme-control{display:flex;align-items:center;gap:8px;color:var(--muted)}.theme-control select{width:145px;cursor:pointer}
         .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px;margin:24px 0 18px}.card{position:relative;border:1px solid var(--line);background:var(--card);border-radius:14px;padding:18px;min-width:0}.city{font-size:16px;font-weight:700;margin:0;padding-right:30px}.country{font-size:11px;color:var(--muted);margin:4px 0 16px;min-height:15px}.remove{position:absolute;top:8px;right:8px;border:0;padding:4px 10px;font-size:21px;color:var(--muted);background:transparent;min-width:40px}.clockrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.face{width:62px;height:62px;flex-shrink:0;color:var(--accent)}.face circle{stroke:var(--line)}.time{font-variant-numeric:tabular-nums;font-size:25px;letter-spacing:-.8px;white-space:nowrap;line-height:1.2}.date,.zone{font-size:11px;color:var(--muted);margin-top:6px}.zone{border-top:1px solid var(--line);padding-top:12px;margin-top:16px;display:flex;justify-content:space-between;gap:8px}.period{color:var(--accent)}.bottom{font-size:11px;color:var(--muted)}form{display:flex;gap:8px;flex-wrap:wrap;align-items:center}label{font-size:12px}select{max-width:100%;width:160px}.empty{font-size:14px;color:var(--muted)}
         @media(max-width:440px){h2{font-size:22px}.widget{padding:16px}.tools{width:100%}.time{font-size:28px}.bottom{align-items:flex-start;flex-direction:column}}
       </style>
-      <section class="widget ${this.light?'light':''}" aria-label="World clock">
-        <header><div><p class="eyebrow clock-brand"><img src="/blockbrief-digital-icon.png" alt="" width="30" height="30"><span>BlockBriefNews</span></p><h2>World clock</h2><p class="sub">Track the time across the cities you follow.</p></div><div class="tools"><button id="format" aria-label="Use ${this.hour12?'24':'12'}-hour time">${this.hour12?'12':'24'}-hour</button><button id="theme" aria-label="Switch to ${this.light?'dark':'light'} theme">${this.light?'Dark':'Light'} theme</button><button id="fullscreen" type="button" aria-label="Open world clock full screen" aria-pressed="false">Full screen</button></div></header>
+      <section class="widget" data-theme="${this.theme}" aria-label="World clock">
+        <header><div><p class="eyebrow clock-brand"><img src="/blockbrief-digital-icon.png" alt="" width="30" height="30"><span>BlockBriefNews</span></p><h2>World clock</h2><p class="sub">Track the time across the cities you follow.</p></div><div class="tools"><button id="format" aria-label="Use ${this.hour12?'24':'12'}-hour time">${this.hour12?'12':'24'}-hour</button><div class="theme-control"><label for="theme">Theme</label><select id="theme">${themes.map(t=>`<option value="${t.id}"${t.id===this.theme?' selected':''}>${t.name}</option>`).join('')}</select></div><button id="fullscreen" type="button" aria-label="Open world clock full screen" aria-pressed="false">Full screen</button></div></header>
         <div class="grid"></div>
         <div class="bottom"><form><label for="city">Add city</label><select id="city"></select><button type="submit">+ Add</button></form><span>Time from your device · Updates every second</span></div>
       </section>`;
@@ -139,8 +232,9 @@
       select.disabled=!select.options.length;this.shadowRoot.querySelector('button[type="submit"]').disabled=select.disabled;
       this.shadowRoot.querySelector('form').onsubmit=e=>{e.preventDefault();const city=cities.find(c=>c[2]===select.value);if(city&&!this.selected.some(c=>c[2]===city[2])){this.selected.push(city);this.saveSettings();this.render();this.shadowRoot.querySelector('#city').focus();}};
       this.shadowRoot.querySelector('#format').onclick=()=>{this.hour12=!this.hour12;this.saveSettings();this.render();this.shadowRoot.querySelector('#format').focus();};
-      this.shadowRoot.querySelector('#theme').onclick=()=>{this.light=!this.light;this.saveSettings();this.render();this.shadowRoot.querySelector('#theme').focus();};
+      this.shadowRoot.querySelector('#theme').onchange=e=>{this.theme=e.target.value;this.applyTheme();this.saveSettings();};
       this.shadowRoot.querySelector('#fullscreen').onclick=()=>this.toggleFullscreen();
+      this.applyTheme();
       this.syncFullscreen();
       this.tick();
     }
