@@ -292,7 +292,7 @@
       <section class="widget" data-theme="${this.theme}" aria-label="World clock">
         <header><div><p class="eyebrow clock-brand"><img src="/blockbrief-digital-icon.png" alt="" width="30" height="30"><span>BlockBriefNews</span></p><h2>World clock</h2><p class="sub">Track the time across the cities you follow.</p></div><div class="tools"><button id="format" aria-label="Use ${this.hour12?'24':'12'}-hour time">${this.hour12?'12':'24'}-hour</button><div class="theme-control"><label for="theme">Theme</label><select id="theme">${themes.map(t=>`<option value="${t.id}"${t.id===this.theme?' selected':''}>${t.name}</option>`).join('')}</select></div><button id="fullscreen" type="button" aria-label="Open world clock full screen" aria-pressed="false">Full screen</button></div></header>
         <div class="grid"></div>
-        <div class="bottom"><div class="city-search"><form role="search" aria-label="Find a world clock city"><label for="city">Add city</label><input id="city" type="search" placeholder="Type a city, e.g. General Santos" maxlength="100" autocomplete="off" aria-describedby="city-status"><button type="submit">Search</button></form><p id="city-status" class="city-status" role="status">Type at least 2 letters, then choose a matching city.</p><ul id="city-results" class="city-results" aria-label="Matching cities"></ul><p class="data-credit">City data: <a href="https://www.geonames.org/" target="_blank" rel="noopener noreferrer">GeoNames</a></p></div><span>Time from your device · Updates every second</span></div>
+        <div class="bottom"><div class="city-search"><form role="search" aria-label="Find a world clock city"><label for="city">Add city</label><input id="city" type="search" placeholder="Type a city, e.g. General Santos" maxlength="100" autocomplete="off" aria-describedby="city-status"><button type="submit">Search</button></form><p id="city-status" class="city-status" role="status">Type at least 2 letters, then choose a matching city.</p><ul id="city-results" class="city-results" aria-label="Matching cities"></ul><p class="data-credit">City data: <a href="https://www.geonames.org/" target="_blank" rel="noopener noreferrer">GeoNames</a></p></div><span>Time from your device · Updates every minute</span></div>
       </section>`;
       const grid=this.shadowRoot.querySelector('.grid');
       this.views=this.selected.map(city=>{
@@ -326,13 +326,17 @@
     }
     tick(){
       const now=new Date();
+      if(document.hidden) return;
       for(const view of this.views){
-        const p=Object.fromEntries(view.parts.formatToParts(now).map(x=>[x.type,x.value]));const h=Number(p.hour),m=Number(p.minute),s=Number(p.second);
+        const minute=Math.floor(now.getTime()/60000);
+        if(view.lastMinute===minute)continue;
+        view.lastMinute=minute;
+        const p=Object.fromEntries(view.parts.formatToParts(now).map(x=>[x.type,x.value]));const h=Number(p.hour),m=Number(p.minute);
         view.card.querySelector('.time').textContent=view.time.format(now);
         view.card.querySelector('.date').textContent=view.date.format(now);
         view.card.querySelector('.offset').textContent=p.timeZoneName.replace('GMT','UTC');
         view.card.querySelector('.hour').setAttribute('transform',`rotate(${h%12*30+m/2} 32 32)`);
-        view.card.querySelector('.minute').setAttribute('transform',`rotate(${m*6+s/10} 32 32)`);
+        view.card.querySelector('.minute').setAttribute('transform',`rotate(${m*6} 32 32)`);
       }
     }
   }
