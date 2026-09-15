@@ -1,12 +1,16 @@
-.fried-banner{display:flex;align-items:center;gap:12px;padding:8px 4%;border-bottom:1px solid #5b451f;background:linear-gradient(90deg,#161109,#0b1423);color:#f7e4b1;font:700 13px/1.5 Arial,Helvetica,sans-serif;overflow:hidden}
-.fried-ad-label{flex:none;font-size:10px;letter-spacing:.12em;color:#c2ac7c;border:1px solid #69512d;border-radius:4px;padding:2px 5px}
-.fried-ad-link{display:block;flex:1;min-width:0;overflow:hidden;color:inherit;text-decoration:none}
-.fried-track{display:flex;width:max-content;animation:fried-scroll 32s linear infinite;will-change:transform}
-.fried-message{flex:none;display:flex;align-items:center;justify-content:space-around;gap:24px;min-width:100vw;padding:4px 32px 4px 0;white-space:nowrap}
-.fried-brand{color:#ffd16a;letter-spacing:.07em}.fried-cta{color:#70dfff}.fried-separator{color:#b38639}
+.fried-banner{position:relative;display:flex;align-items:center;gap:12px;padding:20px 4% 12px;border-top:1px solid #b58436;border-bottom:1px solid #72531e;background:linear-gradient(110deg,#261b09,#102133 65%,#192d36);color:#fff0c5;font:700 14px/1.5 Arial,Helvetica,sans-serif;isolation:isolate}
+.fried-ad-label{position:absolute;top:3px;left:4%;font-size:9px;line-height:12px;letter-spacing:.14em;color:#e3c68b}
+.fried-ad-link{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:24px;flex:1;min-width:0;min-height:56px;color:inherit;text-decoration:none;border-radius:12px}
+.fried-identity{display:flex;align-items:center;gap:10px;min-width:0}.fried-logo{display:block;width:48px;height:48px;flex:none;object-fit:cover;border-radius:50%;border:2px solid #ffcf70;box-shadow:0 0 18px #ffc65c30}.fried-brand{color:#ffe1a0;letter-spacing:.05em;white-space:nowrap}
+.fried-marquee{min-width:0;overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 12px,#000 calc(100% - 12px),transparent)}
+.fried-track{display:flex;width:max-content;animation:fried-scroll 26s linear infinite;will-change:transform}
+.fried-message{flex:none;display:block;padding:6px 48px 6px 12px;white-space:nowrap;color:#d8e8ed}
+.fried-cta{display:flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border:1px solid #ffe4a7;border-radius:999px;background:linear-gradient(135deg,#ffe6a7,#ffc154);color:#201500;box-shadow:0 4px 16px #0003;font-weight:800;white-space:nowrap;transition:background .18s,box-shadow .18s}
+.fried-ad-link:hover .fried-cta,.fried-ad-link:focus-visible .fried-cta{background:#fff0c9;box-shadow:0 0 0 3px #ffd06b40,0 5px 20px #0004}
 .fried-banner:hover .fried-track,.fried-banner:focus-within .fried-track,.fried-banner.is-paused .fried-track{animation-play-state:paused}
-.fried-pause{flex:none;border:1px solid #806538;border-radius:6px;background:#171a20;color:#ffe8b6;font:700 12px Arial,Helvetica,sans-serif;padding:7px 10px;cursor:pointer;min-height:32px}
-.fried-ad-link:focus-visible,.fried-pause:focus-visible{outline:2px solid #70dfff;outline-offset:2px}
+.fried-pause{flex:none;min-width:44px;min-height:44px;border:1px solid #ad8c51;border-radius:8px;background:#142331;color:#fff0c5;font:700 11px Arial,Helvetica,sans-serif;padding:8px;cursor:pointer}
+.fried-ad-link:focus-visible,.fried-pause:focus-visible{outline:3px solid #70dfff;outline-offset:4px}
 @keyframes fried-scroll{to{transform:translateX(-50%)}}
-@media(max-width:600px){.fried-banner{gap:8px;padding:7px 4%}.fried-message{gap:18px}.fried-pause{padding:7px 8px}}
-@media(prefers-reduced-motion:reduce){.fried-track{animation:none;transform:none;width:100%;will-change:auto}.fried-message{min-width:0;white-space:normal;flex-wrap:wrap;justify-content:flex-start;gap:6px 12px;padding:2px 0}.fried-message[aria-hidden]{display:none}.fried-separator{display:none}.fried-pause{display:none}}
+@media(max-width:700px){.fried-banner{gap:8px;padding:20px 12px 10px;align-items:flex-start}.fried-ad-label{left:12px}.fried-ad-link{grid-template-columns:minmax(0,1fr) auto;gap:8px 6px}.fried-identity{gap:6px}.fried-logo{width:36px;height:36px}.fried-brand{font-size:12px;letter-spacing:0}.fried-cta{font-size:12px;padding:0 10px}.fried-marquee{grid-column:1/-1;grid-row:2;font-size:12px}.fried-message{padding-top:2px;padding-bottom:2px}.fried-pause{margin-top:0}}
+@media(max-width:360px){.fried-brand{font-size:11px;line-height:1.25;white-space:normal}.fried-cta{padding:0 6px}.fried-identity{gap:4px}}
+@media(prefers-reduced-motion:reduce){.fried-track{animation:none;transform:none;width:100%;will-change:auto}.fried-message{white-space:normal;padding:2px 0}.fried-message[aria-hidden]{display:none}.fried-marquee{mask-image:none}.fried-pause{display:none}.fried-cta{transition:none}}
