@@ -12,4 +12,5 @@
 .fried-ad-link:focus-visible,.fried-pause:focus-visible{outline:3px solid #70dfff;outline-offset:4px}
 @keyframes fried-scroll{to{transform:translateX(-50%)}}
 @media(max-width:700px){.fried-banner{gap:8px;padding:20px 12px 10px;align-items:flex-start}.fried-ad-label{left:12px}.fried-ad-link{grid-template-columns:minmax(0,1fr) auto;gap:8px 6px}.fried-identity{gap:6px}.fried-logo{width:36px;height:36px}.fried-brand{font-size:12px;letter-spacing:0}.fried-cta{font-size:12px;padding:0 10px}.fried-marquee{grid-column:1/-1;grid-row:2;font-size:12px}.fried-message{padding-top:2px;padding-bottom:2px}.fried-pause{margin-top:0}}
+@media(max-width:360px){.fried-brand{font-size:11px;line-height:1.25;white-space:normal}.fried-cta{padding:0 6px}.fried-identity{gap:4px}}
 @media(prefers-reduced-motion:reduce){.fried-track{animation:none;transform:none;width:100%;will-change:auto}.fried-message{white-space:normal;padding:2px 0}.fried-message[aria-hidden]{display:none}.fried-marquee{mask-image:none}.fried-pause{display:none}.fried-cta{transition:none}}
