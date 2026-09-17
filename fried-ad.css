@@ -3,8 +3,9 @@
 .fried-ad-link{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:24px;flex:1;min-width:0;min-height:56px;color:inherit;text-decoration:none;border-radius:12px}
 .fried-identity{display:flex;align-items:center;gap:10px;min-width:0}.fried-logo{display:block;width:48px;height:48px;flex:none;object-fit:cover;border-radius:50%;border:2px solid #ffcf70;box-shadow:0 0 18px #ffc65c30}.fried-brand{color:#ffe1a0;letter-spacing:.05em;white-space:nowrap}
 .fried-marquee{min-width:0;overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 12px,#000 calc(100% - 12px),transparent)}
-.fried-track{display:flex;width:max-content;animation:fried-scroll 26s linear infinite;will-change:transform}
-.fried-message{flex:none;display:block;padding:6px 48px 6px 12px;white-space:nowrap;color:#d8e8ed}
+/* Each repeated message must cover the viewport so the loop cannot expose its end. */
+.fried-track{display:flex;width:max-content;min-width:200%;animation:fried-scroll 26s linear infinite;will-change:transform}
+.fried-message{flex:1 0 auto;display:block;padding:6px 48px 6px 12px;white-space:nowrap;color:#d8e8ed}
 .fried-cta{display:flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border:1px solid #ffe4a7;border-radius:999px;background:linear-gradient(135deg,#ffe6a7,#ffc154);color:#201500;box-shadow:0 4px 16px #0003;font-weight:800;white-space:nowrap;transition:background .18s,box-shadow .18s}
 .fried-ad-link:hover .fried-cta,.fried-ad-link:focus-visible .fried-cta{background:#fff0c9;box-shadow:0 0 0 3px #ffd06b40,0 5px 20px #0004}
 .fried-banner:hover .fried-track,.fried-banner:focus-within .fried-track,.fried-banner.is-paused .fried-track{animation-play-state:paused}
@@ -13,4 +14,4 @@
 @keyframes fried-scroll{to{transform:translateX(-50%)}}
 @media(max-width:700px){.fried-banner{gap:8px;padding:20px 12px 10px;align-items:flex-start}.fried-ad-label{left:12px}.fried-ad-link{grid-template-columns:minmax(0,1fr) auto;gap:8px 6px}.fried-identity{gap:6px}.fried-logo{width:36px;height:36px}.fried-brand{font-size:12px;letter-spacing:0}.fried-cta{font-size:12px;padding:0 10px}.fried-marquee{grid-column:1/-1;grid-row:2;font-size:12px}.fried-message{padding-top:2px;padding-bottom:2px}.fried-pause{margin-top:0}}
 @media(max-width:360px){.fried-brand{font-size:11px;line-height:1.25;white-space:normal}.fried-cta{padding:0 6px}.fried-identity{gap:4px}}
-@media(prefers-reduced-motion:reduce){.fried-track{animation:none;transform:none;width:100%;will-change:auto}.fried-message{white-space:normal;padding:2px 0}.fried-message[aria-hidden]{display:none}.fried-marquee{mask-image:none}.fried-pause{display:none}.fried-cta{transition:none}}
+@media(prefers-reduced-motion:reduce){.fried-track{animation:none;transform:none;width:100%;min-width:0;will-change:auto}.fried-message{white-space:normal;padding:2px 0}.fried-message[aria-hidden]{display:none}.fried-marquee{mask-image:none}.fried-pause{display:none}.fried-cta{transition:none}}
