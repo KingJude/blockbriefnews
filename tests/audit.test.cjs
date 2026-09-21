@@ -27,6 +27,21 @@ test('Cross-topic articles appear in every relevant topic',()=>{
   const cats=news.categoriesFor('SEC approves Bitcoin ETF as prices rise','');
   for(const category of ['bitcoin','regulation','markets']) assert.ok(cats.includes(category));
 });
+test('Market-flow words do not accidentally match ETF or law topic keywords',()=>{
+  const examples = [
+    ['144 Billion SHIB Netflow Sends Warning Amid 5% Price Rally', 'Exchange activity suggests the rally may be short-lived.'],
+    ['Token netflows rise', 'Traders track exchange activity.'],
+    ['A flawless network upgrade', 'Trading resumes after the upgrade.']
+  ];
+  for (const [title, description] of examples) {
+    assert.equal(news.categoryFor(title, description), 'markets');
+    assert.ok(!news.categoriesFor(title, description).includes('regulation'));
+  }
+  for (const title of ['New ETF filing', 'New ETFs launch', 'Crypto law passes']) {
+    assert.equal(news.categoryFor(title, ''), 'regulation');
+    assert.ok(news.categoriesFor(title, '').includes('regulation'));
+  }
+});
 test('Deduplication does not discard unrelated short headlines',()=>{
   assert.equal(news.similarity('Bitcoin price rises','Bitcoin price falls'),0);
   assert.equal(news.similarity('Bitcoin price rises','Bitcoin price rises'),1);

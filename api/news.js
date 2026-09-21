@@ -62,7 +62,7 @@ function parseCoinBureau(html, feed) {
   return items.slice(0, 25);
 }
 
-function categoryFor(title,description){ const t=`${title} ${description}`.toLowerCase(); if(/\bsolana\b|\bsol\b/.test(t))return"solana"; if(/\bethereum\b|\beth\b/.test(t))return"ethereum"; if(/\bbitcoin\b|\bbtc\b/.test(t))return"bitcoin"; if(/\bsec\b|\bcftc\b|regulat|policy|congress|senate|court|law|etf|legislat|enforcement/.test(t))return"regulation"; return"markets"; }
+function categoryFor(title,description){ const t=`${title} ${description}`.toLowerCase(); if(/\bsolana\b|\bsol\b/.test(t))return"solana"; if(/\bethereum\b|\beth\b/.test(t))return"ethereum"; if(/\bbitcoin\b|\bbtc\b/.test(t))return"bitcoin"; if(/\bsec\b|\bcftc\b|regulat|policy|congress|senate|court|\blaws?\b|\betfs?\b|legislat|enforcement/.test(t))return"regulation"; return"markets"; }
 const CRYPTO_RE=/bitcoin|\bbtc\b|ethereum|\beth\b|solana|\bsol\b|crypto|digital asset|blockchain|stablecoin|tokeni[sz]|defi|web3|coinbase|binance|kraken/;
 function categoriesFor(title, description) {
   const text = `${title} ${description}`.toLowerCase(), categories = new Set([categoryFor(title, description)]);

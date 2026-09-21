@@ -1,5 +1,13 @@
 # BlockBriefNews production audit
 
+## September 21, 2026 topic classification correction
+
+- Current main at review: `b2a5ae9a44c6f18f4a49dfa2463b8c7a81e6c5a1`; no open PRs. GSC reports 2,735 property-level impressions and zero clicks for August 22–September 18, versus no reported impressions/clicks July 25–August 21. Data is settled through September 18; September 19 onward is incomplete. Most visible queries still concern the unrelated `theblockchainbrief` brand. This window predates the September 19 guides and cannot measure their effect.
+- The existing indexing tracker checked all six canonical URLs September 20: all indexed, no warnings. The homepage was crawled September 19, but topic crawl dates remain September 10–11. The sitemap has no errors/warnings; its API indexed count is not used as indexing evidence. No indexing requests are repeated.
+- Live inspection found a SHIB netflow/price headline incorrectly tagged Regulation. The primary category expression matched `etf` inside `netflow`; similarly, bare `law` matched `flawless`. Require whole-word ETF/ETFs and law/laws matches, retaining genuine ETF/law coverage and the existing multi-topic behavior. This improves topic relevance without rewriting metadata, changing sorting, suppressing articles or changing publisher attribution.
+- Added a regression test that fails on the prior code and passes after the fix, covering netflow/netflows, flawless, actual ETF/ETFs and law headlines. All 18 tests and the 1,015-byte CSP check pass. No inline scripts/JSON-LD, static topic content, sitemap dates, theme, controls, prices, advertising or domain settings changed.
+- Pre-change live audit: six pages return 200, self-canonical and indexable, with no critical/high/medium findings. News API returns 36 newest-first attributed items with no source errors; four quotes, logo/images, world clock, language switching and ad pause/resume work. Preview and production verification are recorded in the change's pull request before claiming publication.
+
 Date: 2026-09-09. Baseline: `12917107e816823058a64347ef528f0ec9ae1a7b`.
 
 Scope: public homepage, five topic pages, transient story briefs, news and FRIED APIs, shared navigation, advertisement, language interface, world clock, metadata and Vercel routing. Existing project and custom domain are retained.
