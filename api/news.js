@@ -62,14 +62,25 @@ function parseCoinBureau(html, feed) {
   return items.slice(0, 25);
 }
 
-function categoryFor(title,description){ const t=`${title} ${description}`.toLowerCase(); if(/\bsolana\b|\bsol\b/.test(t))return"solana"; if(/\bethereum\b|\beth\b/.test(t))return"ethereum"; if(/\bbitcoin\b|\bbtc\b/.test(t))return"bitcoin"; if(/\bsec\b|\bcftc\b|regulat|policy|congress|senate|court|\blaws?\b|\betfs?\b|legislat|enforcement/.test(t))return"regulation"; return"markets"; }
+function namedCategory(text) {
+  const value=String(text||'').toLowerCase();
+  if(/\bsolana\b|\bsol\b/.test(value))return"solana";
+  if(/\bethereum\b|\beth\b/.test(value))return"ethereum";
+  if(/\bbitcoin\b|\bbtc\b/.test(value))return"bitcoin";
+  if(/\bsec\b|\bcftc\b|regulat|policy|congress|senate|court|\blaws?\b|\bbills?\b|\betfs?\b|legislat|enforcement/.test(value))return"regulation";
+  return"";
+}
+function categoryFor(title,description){
+  const headline=String(title||'').toLowerCase();
+  return namedCategory(headline) || (/market|price|exchange|trading|rally|selloff|liquidat/.test(headline)?"markets":"") || namedCategory(description) || "markets";
+}
 const CRYPTO_RE=/bitcoin|\bbtc\b|ethereum|\beth\b|solana|\bsol\b|crypto|digital asset|blockchain|stablecoin|tokeni[sz]|defi|web3|coinbase|binance|kraken/;
 function categoriesFor(title, description) {
   const text = `${title} ${description}`.toLowerCase(), categories = new Set([categoryFor(title, description)]);
   if (/\bbitcoin\b|\bbtc\b/.test(text)) categories.add('bitcoin');
   if (/\bethereum\b|\beth\b/.test(text)) categories.add('ethereum');
   if (/\bsolana\b|\bsol\b/.test(text)) categories.add('solana');
-  if (/\bsec\b|\bcftc\b|regulat|policy|congress|senate|court|\blaw\b|legislat|enforcement/.test(text)) categories.add('regulation');
+  if (/\bsec\b|\bcftc\b|regulat|policy|congress|senate|court|\blaws?\b|\bbills?\b|legislat|enforcement/.test(text)) categories.add('regulation');
   if (/market|price|\betf\b|exchange|trading|rally|selloff|liquidat/.test(text)) categories.add('markets');
   return [...categories];
 }
