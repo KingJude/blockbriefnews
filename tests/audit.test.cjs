@@ -42,6 +42,14 @@ test('Market-flow words do not accidentally match ETF or law topic keywords',()=
     assert.ok(news.categoriesFor(title, '').includes('regulation'));
   }
 });
+test('Primary topic follows the headline before secondary summary mentions',()=>{
+  const title='Cardano Price Prediction: Will ADA Break $0.30 or Fall to $0.20 This Week?';
+  const description='Bitcoin traded higher while Ethereum held support.';
+  assert.equal(news.categoryFor(title,description),'markets');
+  assert.deepEqual([...news.categoriesFor(title,description)].sort(),['bitcoin','ethereum','markets']);
+  assert.equal(news.categoryFor('Scaling fees fall','Ethereum layer 2 activity increased.'),'ethereum');
+  assert.equal(news.categoryFor('Digital Asset Bill of Rights proposed','Bitcoin holders react.'),'regulation');
+});
 test('Deduplication does not discard unrelated short headlines',()=>{
   assert.equal(news.similarity('Bitcoin price rises','Bitcoin price falls'),0);
   assert.equal(news.similarity('Bitcoin price rises','Bitcoin price rises'),1);
