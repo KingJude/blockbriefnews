@@ -62,12 +62,14 @@ function parseCoinBureau(html, feed) {
   return items.slice(0, 25);
 }
 
+// Tax-policy phrases belong in Regulation; a token's transfer tax alone does not.
+const TAX_POLICY_RE=/\btax(?:ation)?[\s-]+(?:rules?|laws?|regulations?|guidance|polic(?:y|ies)|legislation|reforms?|proposals?)\b/;
 function namedCategory(text) {
   const value=String(text||'').toLowerCase();
   if(/\bsolana\b|\bsol\b/.test(value))return"solana";
   if(/\bethereum\b|\beth\b/.test(value))return"ethereum";
   if(/\bbitcoin\b|\bbtc\b/.test(value))return"bitcoin";
-  if(/\bsec\b|\bcftc\b|regulat|policy|congress|senate|court|\blaws?\b|\bbills?\b|\betfs?\b|legislat|enforcement/.test(value))return"regulation";
+  if(/\bsec\b|\bcftc\b|regulat|policy|congress|senate|court|\blaws?\b|\bbills?\b|\betfs?\b|legislat|enforcement/.test(value)||TAX_POLICY_RE.test(value))return"regulation";
   return"";
 }
 function categoryFor(title,description){
@@ -80,7 +82,7 @@ function categoriesFor(title, description) {
   if (/\bbitcoin\b|\bbtc\b/.test(text)) categories.add('bitcoin');
   if (/\bethereum\b|\beth\b/.test(text)) categories.add('ethereum');
   if (/\bsolana\b|\bsol\b/.test(text)) categories.add('solana');
-  if (/\bsec\b|\bcftc\b|regulat|policy|congress|senate|court|\blaws?\b|\bbills?\b|legislat|enforcement/.test(text)) categories.add('regulation');
+  if (/\bsec\b|\bcftc\b|regulat|policy|congress|senate|court|\blaws?\b|\bbills?\b|legislat|enforcement/.test(text)||TAX_POLICY_RE.test(text)) categories.add('regulation');
   if (/market|price|\betf\b|exchange|trading|rally|selloff|liquidat/.test(text)) categories.add('markets');
   return [...categories];
 }

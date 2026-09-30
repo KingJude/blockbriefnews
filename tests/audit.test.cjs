@@ -50,6 +50,20 @@ test('Primary topic follows the headline before secondary summary mentions',()=>
   assert.equal(news.categoryFor('Scaling fees fall','Ethereum layer 2 activity increased.'),'ethereum');
   assert.equal(news.categoryFor('Digital Asset Bill of Rights proposed','Bitcoin holders react.'),'regulation');
 });
+test('Tax-policy reporting reaches Regulation without treating token fees as policy',()=>{
+  const title='Illinois draft crypto tax rules detail DeFi, stablecoin treatment';
+  const description='Draft rules explain how a digital asset transaction tax applies to stablecoins and self-custody transfers.';
+  assert.equal(news.categoryFor(title,description),'regulation');
+  assert.ok(news.categoriesFor(title,description).includes('regulation'));
+  for(const title of ['New crypto tax guidance released','Draft taxation-policy proposals published','Bitcoin tax rules clarified']) {
+    assert.ok(news.categoriesFor(title,'').includes('regulation'));
+  }
+  assert.equal(news.categoryFor('Bitcoin tax rules clarified',''),'bitcoin');
+  for(const title of ['Token transfer tax falls to 2%','Taxi payment app adds crypto','DeFi trading rules for beginners']) {
+    assert.equal(news.categoryFor(title,''),'markets');
+    assert.ok(!news.categoriesFor(title,'').includes('regulation'));
+  }
+});
 test('Deduplication does not discard unrelated short headlines',()=>{
   assert.equal(news.similarity('Bitcoin price rises','Bitcoin price falls'),0);
   assert.equal(news.similarity('Bitcoin price rises','Bitcoin price rises'),1);
