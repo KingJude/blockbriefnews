@@ -144,6 +144,27 @@ test('session snapshots restore prices immediately on navigation and read only w
   assert.equal(byClass(page.root, 'bbn-ticker-item')[0].children[0].title, 'Bitcoin · Updated 2026-10-20T04:00:00.000Z', 'a restored snapshot keeps its original quote timestamp');
 });
 
+test('stale cached feeds render immediately and refresh despite a recent cache receipt', async () => {
+  const first = await harness();
+  for (const oldQuote of [false, true]) {
+    const storage = new Map(first.storage);
+    const cached = JSON.parse(storage.get('bbncrypto-tickerv1:coinmarketcap'));
+    cached.feed.status = oldQuote ? 'ok' : 'stale';
+    const updatedAt = oldQuote ? START - 300_001 : START;
+    cached.feed.quotes = cached.feed.quotes.map(quote => ({ ...quote, updatedAt, name: 'poisoned identity', url: 'javascript:alert(1)' }));
+    storage.set('bbncrypto-tickerv1:coinmarketcap', JSON.stringify(cached));
+    // Hold the replacement response so the immediately restored view is observable.
+    const page = await harness(source => source === 'coinmarketcap' ? new Promise(() => {}) : defaultFeed(source), 1, { storage, now: START + 1_000 });
+    assert.deepEqual(page.calls.map(call => call.source), ['coinmarketcap']);
+    const btc = byClass(page.root, 'bbn-ticker-item')[0];
+    assert.match(btc.textContent, /12,345\.68/);
+    assert.equal(btc.children[0].title, `Bitcoin · Updated ${new Date(updatedAt).toISOString()}`);
+    assert.equal(btc.children[0].href, 'https://coinmarketcap.com/currencies/bitcoin/');
+    assert.doesNotMatch(page.root.textContent, /poisoned identity/);
+    if (oldQuote) assert.match(btc.textContent, /stale/);
+  }
+});
+
 test('expired, future, invalid and oversized session data never postpone fetching', async () => {
   const first = await harness();
   for (const mutate of [
