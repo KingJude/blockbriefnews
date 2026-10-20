@@ -56,9 +56,9 @@ test('Ticker rejects unknown sources, extra parameters and duplicate sources wit
   assert.equal(calls,0);
 });
 test('Ticker fails honestly for invalid, oversized and failed shared feeds',async()=>{
-  for(const fetch of [async()=>{throw Error('offline');},async()=>Response.json({...feed,source:'dexscreener'}),async()=>new Response('x'.repeat(32769)),async()=>new Response('',{status:429})]){
+  for(const fetch of [async()=>{throw Error('offline');},async()=>Response.json({...feed,source:'dexscreener'}),async()=>new Response('x'.repeat(32769))]){
     const res=response();await handler(fetch)({method:'GET',url:'/api/crypto-ticker?source=coinmarketcap'},res);
-    assert.equal(res.statusCode,503);assert.equal(res.body.status,'unavailable');assert.equal(res.body.quotes.length,0);assert.equal(res.headers['Cache-Control'],'no-store');assert.equal(res.headers['Vercel-CDN-Cache-Control'],undefined);
+    assert.equal(res.statusCode,503);assert.equal(res.body.status,'unavailable');assert.equal(res.body.quotes.length,0);assert.equal(res.headers['Cache-Control'],'no-store');assert.equal(res.headers['Vercel-CDN-Cache-Control'],undefined);assert.equal(res.headers['Retry-After'],'10');
   }
 });
 test('Ticker preserves stale timestamps and HEAD omits the body',async()=>{
@@ -68,11 +68,22 @@ test('Ticker preserves stale timestamps and HEAD omits the body',async()=>{
   const head=response();await run({method:'HEAD',url:'/api/crypto-ticker?source=coinmarketcap'},head);
   assert.equal(head.statusCode,200);assert.equal(head.body,undefined);assert.ok(head.ended);
 });
+test('Ticker forwards bounded retry-after and 429 while upstream errors remain uncached',async()=>{
+  for(const [status,header,expectedStatus,expectedDelay] of [[429,'30',429,'30'],[503,'45',503,'45'],[429,'999999999',429,String(32*86400)],[500,'3600',503,'5'],[429,'invalid',429,'5']]){
+    const run=handler(async()=>new Response('',{status,headers:{'Retry-After':header}}));
+    const res=response();await run({method:'GET',url:'/api/crypto-ticker?source=jupiter'},res);
+    assert.equal(res.statusCode,expectedStatus);
+    assert.equal(res.headers['Retry-After'],expectedDelay);
+    assert.equal(res.headers['Cache-Control'],'no-store');
+    assert.equal(res.headers['Vercel-CDN-Cache-Control'],undefined);
+    assert.equal(res.body.quotes.length,0);
+  }
+});
 test('Every published news page includes the ticker below navigation with the existing ad',()=>{
   for(const file of ['index.html',...['bitcoin','ethereum','solana','markets','regulation','story'].map(name=>name+'/index.html')]){
     const html=fs.readFileSync(path.join(root,file),'utf8');
     assert.equal((html.match(/data-crypto-ticker/g)||[]).length,1);
-    assert.match(html,/<script src="\/crypto-ticker.js\?v=4" defer><\/script>/);
+    assert.match(html,/<script src="\/crypto-ticker.js\?v=5" defer><\/script>/);
     assert.ok(html.indexOf('site-header-spacer')<html.indexOf('data-crypto-ticker'));
     assert.ok(html.indexOf('data-crypto-ticker')<html.indexOf('class="fried-banner"'));
   }
