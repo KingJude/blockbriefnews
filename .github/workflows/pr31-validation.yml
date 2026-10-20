@@ -1,0 +1,73 @@
+name: Temporary PR31 validation
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+permissions: {}
+jobs:
+  validate:
+    if: github.event.pull_request.number == 31 && github.event.pull_request.head.repo.full_name == 'KingJude/blockbriefnews'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      PREVIEW_URL: https://blockbriefnews-git-remove-fried-e23137-jrosos19-2059s-projects.vercel.app
+    steps:
+      - name: Fetch exact public source without credentials
+        run: |
+          set -eu
+          git init source
+          cd source
+          git remote add origin https://github.com/KingJude/blockbriefnews.git
+          git fetch --depth=1 origin "$HEAD_SHA"
+          git checkout --detach FETCH_HEAD
+          test "$(git rev-parse HEAD)" = "$HEAD_SHA"
+          git fetch --depth=1 origin "$BASE_SHA"
+      - name: Run repository CSP and regression checks
+        working-directory: source
+        run: |
+          set -eu
+          node --version
+          node scripts/update-csp.cjs --check
+          node --test tests/*.test.cjs
+          git diff --exit-code
+      - name: Confirm ad-only page changes and unchanged security
+        working-directory: source
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const {execFileSync} = require('node:child_process');
+          const assert = require('node:assert/strict');
+          const base = p => execFileSync('git', ['show', `${process.env.BASE_SHA}:${p}`], {encoding:'utf8'});
+          const pages=['index.html','future-home.html','bitcoin/index.html','ethereum/index.html','solana/index.html','markets/index.html','regulation/index.html','story/index.html'];
+          for(const p of pages){
+            const before=base(p), after=fs.readFileSync(p,'utf8');
+            const expected=before.replace(/<link rel="stylesheet" href="\/fried-ad\.css\?v=3"><script src="\/fried-ad\.js\?v=1" defer><\/script>/g,'').replace(/<aside class="fried-banner"[\s\S]*?<\/aside>/g,'');
+            assert.equal(after,expected,p+' must only remove the ad');
+            assert.doesNotMatch(after,/fried-banner|\/fried-ad\.(?:css|js)/);
+            console.log('AD_ONLY_PASS',p);
+          }
+          for(const p of ['vercel.json','crypto-ticker.js','crypto-ticker.css','header-position.js','header-position.css','languages.js','world-clock.js','api/news.js','api/fried.js','api/crypto-ticker.js','robots.txt','sitemap.xml']){
+            assert.equal(fs.readFileSync(p,'utf8'),base(p),p+' must be preserved');
+          }
+          console.log('PRESERVATION_PASS');
+          NODE
+      - name: Read deployed preview without changing protection
+        run: |
+          node <<'NODE'
+          const assert=require('node:assert/strict');
+          (async()=>{
+            for(const path of ['/','/bitcoin/','/ethereum/','/solana/','/markets/','/regulation/','/story/']){
+              const r=await fetch(process.env.PREVIEW_URL+path,{redirect:'manual',signal:AbortSignal.timeout(20000)});
+              console.log('PREVIEW_HTTP',path,r.status);
+              assert.equal(r.status,200,'Preview inaccessible; do not bypass or change protection');
+              const html=await r.text();
+              assert.doesNotMatch(html,/class="fried-banner"|\/fried-ad\.(?:css|js)/);
+              assert.match(html,/data-crypto-ticker/);
+              assert.match(html,/header-position\.js/);
+              assert.match(html,/languages\.js/);
+              console.log('PREVIEW_AD_REMOVAL_PASS',path);
+            }
+          })().catch(e=>{console.error(e.message);process.exitCode=1});
+          NODE
