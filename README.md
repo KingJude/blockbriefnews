@@ -23,3 +23,9 @@ Temporary preview probes use names beginning with `_` and are deliberately exclu
 `/feed.xml` provides RSS 2.0 with publication dates, source attribution and links to the original publishers. Topic feeds use `?topic=bitcoin`, `ethereum`, `solana`, `markets` or `regulation`; matching pages advertise the appropriate feed in HTML metadata. Feed responses share the existing production news API, use five-minute CDN caching, and return uncached errors when news is unavailable.
 
 The RSS feed is for discovery and subscriptions. It is not a replacement for the site's XML sitemap: its article links belong to original publishers. Continue submitting `/sitemap.xml` for BlockBrief's canonical landing pages. Transient story briefs remain noindex; permanent article archives and Search Console verification require separate work.
+
+## Scrolling crypto ticker
+
+The homepage, topic pages and story view load the shared scrolling ticker below navigation. `/api/crypto-ticker?source=coinmarketcap` serves native BTC, ETH, SOL, BNB, XRP and DOGE; `source=dexscreener` serves the configured SDEX and FRIED Solana mints. The proxy reads SolanaDEX's shared feed without forwarding visitor headers or storing another provider key. The provider cache and CoinMarketCap credit budget remain shared between both sites.
+
+The browser checks majors every five minutes and DEX tokens every ten seconds while the page is visible. Provider timestamps determine freshness; old quotes are marked stale and eventually hidden. Pause scrolling, keyboard browsing and reduced motion are supported. Existing homepage market cards keep their current sources.
