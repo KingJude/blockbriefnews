@@ -83,7 +83,7 @@ test('Every published news page includes the ticker below navigation with the ex
   for(const file of ['index.html',...['bitcoin','ethereum','solana','markets','regulation','story'].map(name=>name+'/index.html')]){
     const html=fs.readFileSync(path.join(root,file),'utf8');
     assert.equal((html.match(/data-crypto-ticker/g)||[]).length,1);
-    assert.match(html,/<script src="\/crypto-ticker.js\?v=5" defer><\/script>/);
+    assert.match(html,/<script src="\/crypto-ticker.js\?v=6" defer><\/script>/);
     assert.ok(html.indexOf('site-header-spacer')<html.indexOf('data-crypto-ticker'));
     assert.ok(html.indexOf('data-crypto-ticker')<html.indexOf('class="fried-banner"'));
   }

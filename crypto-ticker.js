@@ -64,8 +64,9 @@
       if (cached.version !== 1 || !Number.isSafeInteger(cached.cachedAt) || cached.cachedAt <= 0 || cached.cachedAt > now || now - cached.cachedAt > MAX_AGE[source]) return null;
       const feed = normalizeFeed(cached.feed, source);
       if (!['ok', 'stale'].includes(feed.status) || feed.fetchedAt === null || feed.fetchedAt > cached.cachedAt || feed.quotes.some(quote => quote.updatedAt > cached.cachedAt) || !feed.quotes.some(quote => quoteStatus(quote, now) !== 'unavailable')) return null;
+      const stale = feed.status === 'stale' || feed.quotes.some(quote => quoteStatus(quote, now) === 'stale');
       // Stored nextAt never controls a delay. Derive it from verified timestamps.
-      return { feed, nextAt: Math.min(cached.cachedAt + INTERVAL[source], feed.fetchedAt + INTERVAL[source]) };
+      return { feed, nextAt: Math.min(cached.cachedAt + INTERVAL[source], feed.fetchedAt + INTERVAL[source], stale ? now : Infinity) };
     } catch { return null; }
   }
   function cacheFeed(state) {
