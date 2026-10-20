@@ -1,6 +1,13 @@
 // Reuse SolanaDEX's shared provider cache and credit budget; no API key is sent to browsers.
 const SOURCES = { coinmarketcap: 300000, jupiter: 5000 };
 const STATUSES = new Set(['ok', 'stale', 'unavailable', 'unconfigured']);
+const MAX_RETRY_SECONDS = 32 * 24 * 60 * 60;
+
+function retryAfterSeconds(header, fallback) {
+  if (!header) return fallback;
+  const seconds = /^\d+$/.test(header.trim()) ? Number(header) : (Date.parse(header) - Date.now()) / 1000;
+  return Number.isFinite(seconds) ? Math.min(MAX_RETRY_SECONDS, Math.max(fallback, Math.ceil(seconds))) : fallback;
+}
 
 module.exports = async function handler(req, res) {
   res.setHeader('Allow', 'GET, HEAD');
@@ -11,6 +18,8 @@ module.exports = async function handler(req, res) {
   if (!Object.hasOwn(SOURCES, source) || [...url.searchParams.keys()].some(key => key !== 'source') || url.searchParams.getAll('source').length !== 1) {
     return res.status(400).json({ error: 'Choose a supported price source' });
   }
+  let failureStatus = 503;
+  let retryAfter = source === 'jupiter' ? 5 : 10;
   try {
     // Do not forward visitor cookies, Origin or authorization to the shared feed.
     const upstream = await fetch(`https://solanadex.io/api/crypto-ticker/scroll?source=${source}`, {
@@ -18,7 +27,12 @@ module.exports = async function handler(req, res) {
       signal: AbortSignal.timeout(source === 'jupiter' ? 12000 : 16000),
       redirect: 'error'
     });
-    if (!upstream.ok) throw new Error('Feed unavailable');
+    if (!upstream.ok) {
+      failureStatus = upstream.status === 429 ? 429 : 503;
+      if (upstream.status === 429 || upstream.status === 503) retryAfter = retryAfterSeconds(upstream.headers.get('retry-after'), retryAfter);
+      await upstream.body?.cancel().catch(() => {});
+      throw new Error('Feed unavailable');
+    }
     const reader = upstream.body.getReader();
     const chunks = [];
     let bytes = 0;
@@ -54,7 +68,8 @@ module.exports = async function handler(req, res) {
     if (req.method === 'HEAD') return res.status(200).end();
     return res.status(200).json(body);
   } catch {
-    if (req.method === 'HEAD') return res.status(503).end();
-    return res.status(503).json({ source, status: 'unavailable', fetchedAt: null, refreshAfterMs: SOURCES[source], quotes: [] });
+    res.setHeader('Retry-After', String(retryAfter));
+    if (req.method === 'HEAD') return res.status(failureStatus).end();
+    return res.status(failureStatus).json({ source, status: 'unavailable', fetchedAt: null, refreshAfterMs: SOURCES[source], quotes: [] });
   }
 };
