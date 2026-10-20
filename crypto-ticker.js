@@ -5,14 +5,14 @@
   const MAX_AGE = { coinmarketcap: 1_800_000, dexscreener: 120_000 };
   // Remote data never controls token identity, HTML, or link destinations.
   const COINS = [
-    { key: 'cmc:1', symbol: 'BTC', name: 'Bitcoin', source: 'coinmarketcap', url: 'https://coinmarketcap.com/currencies/bitcoin/' },
-    { key: 'cmc:1027', symbol: 'ETH', name: 'Ethereum', source: 'coinmarketcap', url: 'https://coinmarketcap.com/currencies/ethereum/' },
-    { key: 'cmc:5426', symbol: 'SOL', name: 'Solana', source: 'coinmarketcap', url: 'https://coinmarketcap.com/currencies/solana/' },
-    { key: 'cmc:1839', symbol: 'BNB', name: 'BNB', source: 'coinmarketcap', url: 'https://coinmarketcap.com/currencies/bnb/' },
-    { key: 'cmc:52', symbol: 'XRP', name: 'XRP', source: 'coinmarketcap', url: 'https://coinmarketcap.com/currencies/xrp/' },
-    { key: 'cmc:74', symbol: 'DOGE', name: 'Dogecoin', source: 'coinmarketcap', url: 'https://coinmarketcap.com/currencies/dogecoin/' },
-    { key: 'dex:solana:rMVmRp5DJch9sVxJTgchcDbgkK3phgmEd9a8Yk3PLEX', symbol: 'SDEX', name: 'SolanaDEX', source: 'dexscreener', url: 'https://dexscreener.com/solana/rMVmRp5DJch9sVxJTgchcDbgkK3phgmEd9a8Yk3PLEX' },
-    { key: 'dex:solana:3LaXmnVQxMMArywUBJjGA5EKbUdJ17PFor3M5oeupump', symbol: 'FRIED', name: 'FRIED', source: 'dexscreener', url: 'https://dexscreener.com/solana/3LaXmnVQxMMArywUBJjGA5EKbUdJ17PFor3M5oeupump' },
+    { key: 'cmc:1', symbol: 'BTC', name: 'Bitcoin', source: 'coinmarketcap', url: 'https://coinmarketcap.com/currencies/bitcoin/', iconSrc: '/assets/coins/ticker/bitcoin.png' },
+    { key: 'cmc:1027', symbol: 'ETH', name: 'Ethereum', source: 'coinmarketcap', url: 'https://coinmarketcap.com/currencies/ethereum/', iconSrc: '/assets/coins/ticker/ethereum.png' },
+    { key: 'cmc:5426', symbol: 'SOL', name: 'Solana', source: 'coinmarketcap', url: 'https://coinmarketcap.com/currencies/solana/', iconSrc: '/assets/coins/ticker/solana.png' },
+    { key: 'cmc:1839', symbol: 'BNB', name: 'BNB', source: 'coinmarketcap', url: 'https://coinmarketcap.com/currencies/bnb/', iconSrc: '/assets/coins/ticker/bnb.png' },
+    { key: 'cmc:52', symbol: 'XRP', name: 'XRP', source: 'coinmarketcap', url: 'https://coinmarketcap.com/currencies/xrp/', iconSrc: '/assets/coins/ticker/xrp.png' },
+    { key: 'cmc:74', symbol: 'DOGE', name: 'Dogecoin', source: 'coinmarketcap', url: 'https://coinmarketcap.com/currencies/dogecoin/', iconSrc: '/assets/coins/ticker/dogecoin.png' },
+    { key: 'dex:solana:rMVmRp5DJch9sVxJTgchcDbgkK3phgmEd9a8Yk3PLEX', symbol: 'SDEX', name: 'SolanaDEX', source: 'dexscreener', url: 'https://dexscreener.com/solana/rMVmRp5DJch9sVxJTgchcDbgkK3phgmEd9a8Yk3PLEX', iconSrc: '/assets/coins/ticker/sdex.png' },
+    { key: 'dex:solana:3LaXmnVQxMMArywUBJjGA5EKbUdJ17PFor3M5oeupump', symbol: 'FRIED', name: 'FRIED', source: 'dexscreener', url: 'https://dexscreener.com/solana/3LaXmnVQxMMArywUBJjGA5EKbUdJ17PFor3M5oeupump', iconSrc: '/assets/coins/ticker/fried.webp' },
   ];
 
   const finite = value => typeof value === 'number' && Number.isFinite(value);
@@ -84,7 +84,17 @@
           const item = element('li', 'bbn-ticker-item');
           const link = externalLink(coin.url, 'bbn-ticker-link');
           if (duplicate) link.tabIndex = -1;
-          link.append(element('span', 'bbn-ticker-symbol', coin.symbol));
+          const identity = element('span', 'bbn-ticker-identity');
+          const icon = element('img', 'bbn-ticker-icon');
+          icon.src = coin.iconSrc;
+          icon.alt = '';
+          icon.width = 36;
+          icon.height = 36;
+          icon.decoding = 'async';
+          const label = element('span', 'bbn-ticker-label');
+          label.append(element('span', 'bbn-ticker-symbol', coin.symbol), element('span', 'bbn-ticker-name', coin.name));
+          identity.append(icon, label);
+          link.append(identity);
           const values = element('span', 'bbn-ticker-quote');
           const price = element('strong', '', '—');
           const change = element('span', 'bbn-ticker-change');
