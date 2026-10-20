@@ -1,18 +1,18 @@
 (() => {
   'use strict';
 
-  const INTERVAL = { coinmarketcap: 300_000, dexscreener: 10_000 };
-  const MAX_AGE = { coinmarketcap: 1_800_000, dexscreener: 120_000 };
+  const INTERVAL = { coinmarketcap: 300_000, jupiter: 5_000 };
+  const MAX_AGE = { coinmarketcap: 1_800_000, jupiter: 120_000 };
   // Remote data never controls token identity, HTML, or link destinations.
   const COINS = [
     { key: 'cmc:1', symbol: 'BTC', name: 'Bitcoin', source: 'coinmarketcap', url: 'https://coinmarketcap.com/currencies/bitcoin/', iconSrc: '/assets/coins/ticker/bitcoin.png' },
     { key: 'cmc:1027', symbol: 'ETH', name: 'Ethereum', source: 'coinmarketcap', url: 'https://coinmarketcap.com/currencies/ethereum/', iconSrc: '/assets/coins/ticker/ethereum.png' },
-    { key: 'cmc:5426', symbol: 'SOL', name: 'Solana', source: 'coinmarketcap', url: 'https://coinmarketcap.com/currencies/solana/', iconSrc: '/assets/coins/ticker/solana.png' },
+    { key: 'jup:So11111111111111111111111111111111111111112', symbol: 'SOL', name: 'Solana', source: 'jupiter', url: 'https://jup.ag/tokens/So11111111111111111111111111111111111111112', iconSrc: '/assets/coins/ticker/solana.png' },
     { key: 'cmc:1839', symbol: 'BNB', name: 'BNB', source: 'coinmarketcap', url: 'https://coinmarketcap.com/currencies/bnb/', iconSrc: '/assets/coins/ticker/bnb.png' },
     { key: 'cmc:52', symbol: 'XRP', name: 'XRP', source: 'coinmarketcap', url: 'https://coinmarketcap.com/currencies/xrp/', iconSrc: '/assets/coins/ticker/xrp.png' },
     { key: 'cmc:74', symbol: 'DOGE', name: 'Dogecoin', source: 'coinmarketcap', url: 'https://coinmarketcap.com/currencies/dogecoin/', iconSrc: '/assets/coins/ticker/dogecoin.png' },
-    { key: 'dex:solana:rMVmRp5DJch9sVxJTgchcDbgkK3phgmEd9a8Yk3PLEX', symbol: 'SDEX', name: 'SolanaDEX', source: 'dexscreener', url: 'https://dexscreener.com/solana/rMVmRp5DJch9sVxJTgchcDbgkK3phgmEd9a8Yk3PLEX', iconSrc: '/assets/coins/ticker/sdex.png' },
-    { key: 'dex:solana:3LaXmnVQxMMArywUBJjGA5EKbUdJ17PFor3M5oeupump', symbol: 'FRIED', name: 'FRIED', source: 'dexscreener', url: 'https://dexscreener.com/solana/3LaXmnVQxMMArywUBJjGA5EKbUdJ17PFor3M5oeupump', iconSrc: '/assets/coins/ticker/fried.webp' },
+    { key: 'jup:rMVmRp5DJch9sVxJTgchcDbgkK3phgmEd9a8Yk3PLEX', symbol: 'SDEX', name: 'SolanaDEX', source: 'jupiter', url: 'https://jup.ag/tokens/rMVmRp5DJch9sVxJTgchcDbgkK3phgmEd9a8Yk3PLEX', iconSrc: '/assets/coins/ticker/sdex.png' },
+    { key: 'jup:3LaXmnVQxMMArywUBJjGA5EKbUdJ17PFor3M5oeupump', symbol: 'FRIED', name: 'FRIED', source: 'jupiter', url: 'https://jup.ag/tokens/3LaXmnVQxMMArywUBJjGA5EKbUdJ17PFor3M5oeupump', iconSrc: '/assets/coins/ticker/fried.webp' },
   ];
 
   const finite = value => typeof value === 'number' && Number.isFinite(value);
@@ -143,15 +143,15 @@
       state.nextAt = Date.now() + INTERVAL[state.source];
       const controller = new AbortController();
       state.controller = controller;
-      // Allow the shared DEX cache to finish slower provider responses.
-      const timeout = setTimeout(() => controller.abort(), state.source === 'dexscreener' ? 32_000 : 18_000);
+      // Shared server caching batches Solana prices across both websites.
+      const timeout = setTimeout(() => controller.abort(), state.source === 'jupiter' ? 14_000 : 18_000);
       try {
         const response = await fetch(`/api/crypto-ticker?source=${state.source}`, { signal: controller.signal, cache: 'no-store', credentials: 'same-origin' });
         if (!response.ok) throw new Error('Price feed unavailable');
         const feed = normalizeFeed(await response.json(), state.source);
         if (active && !controller.signal.aborted) {
           state.feed = feed;
-          if (feed.status === 'unavailable') state.nextAt = Date.now() + 10_000;
+          if (feed.status === 'unavailable') state.nextAt = Date.now() + Math.min(INTERVAL[state.source], 10_000);
           render();
         }
       } catch {
@@ -159,7 +159,7 @@
           state.feed = state.feed ? { ...state.feed, status: 'stale' } : { status: 'unavailable', quotes: COINS.filter(coin => coin.source === state.source).map(emptyQuote) };
           // A cache fill may have outlived a disconnected caller. Read the shared
           // cache again soon without changing either provider's refresh limit.
-          state.nextAt = Math.min(state.nextAt, Date.now() + 10_000);
+          state.nextAt = Math.min(state.nextAt, Date.now() + Math.min(INTERVAL[state.source], 10_000));
           render();
         }
       } finally {

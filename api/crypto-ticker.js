@@ -1,5 +1,5 @@
 // Reuse SolanaDEX's shared provider cache and credit budget; no API key is sent to browsers.
-const SOURCES = { coinmarketcap: 300000, dexscreener: 10000 };
+const SOURCES = { coinmarketcap: 300000, jupiter: 5000 };
 const STATUSES = new Set(['ok', 'stale', 'unavailable', 'unconfigured']);
 
 module.exports = async function handler(req, res) {
@@ -15,7 +15,7 @@ module.exports = async function handler(req, res) {
     // Do not forward visitor cookies, Origin or authorization to the shared feed.
     const upstream = await fetch(`https://solanadex.io/api/crypto-ticker/scroll?source=${source}`, {
       headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(source === 'dexscreener' ? 30000 : 16000),
+      signal: AbortSignal.timeout(source === 'jupiter' ? 12000 : 16000),
       redirect: 'error'
     });
     if (!upstream.ok) throw new Error('Feed unavailable');
@@ -47,8 +47,8 @@ module.exports = async function handler(req, res) {
         source
       }))
     };
-    // Short edge caching absorbs concurrent page loads. Quote timestamps still determine freshness.
-    if (feed.status === 'ok' || feed.status === 'stale') {
+    // Keep the five-second Jupiter cadence free of another edge-cache window.
+    if (source === 'coinmarketcap' && (feed.status === 'ok' || feed.status === 'stale')) {
       res.setHeader('Vercel-CDN-Cache-Control', 'public, s-maxage=2');
     }
     if (req.method === 'HEAD') return res.status(200).end();
