@@ -170,8 +170,8 @@
       state.nextAt = Date.now() + INTERVAL[state.source];
       const controller = new AbortController();
       state.controller = controller;
-      // The local proxy has a sixteen-second upstream deadline.
-      const timeout = setTimeout(() => controller.abort(), 18_000);
+      // Allow the shared DEX cache to finish slower provider responses.
+      const timeout = setTimeout(() => controller.abort(), state.source === 'dexscreener' ? 32_000 : 18_000);
       try {
         const response = await fetch(`/api/crypto-ticker?source=${state.source}`, { signal: controller.signal, cache: 'no-store', credentials: 'same-origin' });
         if (!response.ok) throw new Error('Price feed unavailable');

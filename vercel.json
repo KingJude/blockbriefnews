@@ -67,5 +67,11 @@
       "source": "/feed.xml",
       "destination": "/api/feed"
     }
-  ]
+  ],
+  "functions": {
+    "api/crypto-ticker.js": {
+      "maxDuration": 35
+    }
+  }
 }
+

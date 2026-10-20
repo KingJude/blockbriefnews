@@ -15,7 +15,7 @@ module.exports = async function handler(req, res) {
     // Do not forward visitor cookies, Origin or authorization to the shared feed.
     const upstream = await fetch(`https://solanadex.io/api/crypto-ticker/scroll?source=${source}`, {
       headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(16000),
+      signal: AbortSignal.timeout(source === 'dexscreener' ? 30000 : 16000),
       redirect: 'error'
     });
     if (!upstream.ok) throw new Error('Feed unavailable');
