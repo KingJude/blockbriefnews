@@ -85,6 +85,7 @@ test('Every published news page includes the ticker below navigation with the ex
     assert.equal((html.match(/data-crypto-ticker/g)||[]).length,1);
     assert.match(html,/<script src="\/crypto-ticker.js\?v=6" defer><\/script>/);
     assert.ok(html.indexOf('site-header-spacer')<html.indexOf('data-crypto-ticker'));
-    assert.ok(html.indexOf('data-crypto-ticker')<html.indexOf('class="fried-banner"'));
+    assert.doesNotMatch(html, /class="fried-banner"/);
+    assert.doesNotMatch(html, /\/fried-ad\.(?:css|js)/);
   }
 });
