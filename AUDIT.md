@@ -1,5 +1,11 @@
 # BlockBriefNews production audit
 
+## October 20, 2026 FRIED scrolling advertisement removal
+
+- Removed the FRIED promotional scrolling advertisement from the homepage, all five canonical topic pages, the transient story view and the retained future-home page at the user's request. Removed only the page-level `fried-ad.css` and `fried-ad.js` includes and the `fried-banner` markup.
+- Preserved FRIED market-price cards and the shared crypto ticker FRIED quote/icon, along with the live newest-first news feed, publisher attribution/links, theme, fixed mobile header, topic guides, language controls, world clock, security configuration, canonicals, structured data, robots, sitemap and domain setup.
+- Updated the crypto-ticker regression to require the advertisement to remain absent. No sitemap last-modified dates, metadata or indexing requests were changed for this UI-only removal.
+
 ## September 30, 2026 tax-policy topic coverage
 
 - Reviewed current main `67dc15c0c9ad59d726b837348eb586f15591fcca`; no open PRs. GSC reports 2,912 property impressions and zero clicks for August 31–September 27 versus no reported impressions/clicks for August 3–30. Data is settled through September 27 (GSC Pacific-date basis); September 28 onward is incomplete. The visible queries excluding `theblockchainbrief` still total only 22 impressions and include other brand searches, so they do not justify another metadata rewrite or a ranking-effect claim.
