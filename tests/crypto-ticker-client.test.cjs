@@ -86,8 +86,6 @@ test('mounts once per section, shares page requests and uses only exact configur
   assert.ok(links.every(link => /^https:\/\/(?:coinmarketcap\.com|dexscreener\.com)\//.test(link.href)));
   assert.equal(byClass(page.root, 'bbn-ticker-group')[1].getAttribute('aria-hidden'), 'true');
   assert.ok(cells.slice(8).every(cell => cell.children[0].tabIndex === -1));
-  assert.match(page.root.textContent, /CoinMarketCap · 5 min/);
-  assert.match(page.root.textContent, /DexScreener · 10 sec/);
   page.runAgain();
   assert.equal(page.calls.length, 2, 'loading the asset again does not duplicate polling');
 });
@@ -96,26 +94,11 @@ test('labels old provider quotes stale and blanks them on expiry without another
   const page = await harness(source => ({ source, status: 'ok', quotes: source === 'coinmarketcap' ? [row('cmc:1', source, { updatedAt: START - 1_795_000 })] : [] }));
   const btc = byClass(page.root, 'bbn-ticker-item')[0];
   assert.match(btc.textContent, /stale/);
-  assert.match(page.root.textContent, /delayed/);
   assert.doesNotMatch(byClass(btc, 'bbn-ticker-change')[0].className, /gain|loss/);
   await page.advance(6_000);
   assert.equal(byClass(btc, 'bbn-ticker-quote')[0].children[0].textContent, '—');
   assert.doesNotMatch(btc.textContent, /2\.50%/);
   assert.equal(page.calls.filter(call => call.source === 'coinmarketcap').length, 1);
-});
-
-test('Pause and Resume keep the accessible button state and scrolling state synchronized', async () => {
-  const page = await harness();
-  const pause = byClass(page.root, 'bbn-ticker-pause')[0];
-  assert.equal(pause.getAttribute('aria-pressed'), 'false');
-  pause.dispatch('click');
-  assert.equal(page.root.dataset.paused, 'true');
-  assert.equal(pause.getAttribute('aria-pressed'), 'true');
-  assert.equal(pause.textContent, 'Resume scrolling');
-  pause.dispatch('click');
-  assert.equal(page.root.dataset.paused, 'false');
-  assert.equal(pause.getAttribute('aria-pressed'), 'false');
-  assert.equal(pause.textContent, 'Pause scrolling');
 });
 
 test('polling stops while hidden and resumes due feeds with independent provider intervals', async () => {

@@ -3,10 +3,6 @@
 
   const INTERVAL = { coinmarketcap: 300_000, dexscreener: 10_000 };
   const MAX_AGE = { coinmarketcap: 1_800_000, dexscreener: 120_000 };
-  const PROVIDERS = {
-    coinmarketcap: { name: 'CoinMarketCap', url: 'https://coinmarketcap.com/', cadence: '5 min' },
-    dexscreener: { name: 'DexScreener', url: 'https://dexscreener.com/', cadence: '10 sec' },
-  };
   // Remote data never controls token identity, HTML, or link destinations.
   const COINS = [
     { key: 'cmc:1', symbol: 'BTC', name: 'Bitcoin', source: 'coinmarketcap', url: 'https://coinmarketcap.com/currencies/bitcoin/' },
@@ -70,10 +66,9 @@
     if (!roots.length) return;
     let active = true;
     let ageTimer;
-    const states = Object.fromEntries(Object.keys(PROVIDERS).map(source => [source, { source, feed: null, nextAt: 0, running: false, controller: null, timer: undefined }]));
+    const states = Object.fromEntries(Object.keys(INTERVAL).map(source => [source, { source, feed: null, nextAt: 0, running: false, controller: null, timer: undefined }]));
     const widgets = roots.map(root => {
       root.dataset.cryptoTickerReady = 'true';
-      root.dataset.paused = 'false';
       root.setAttribute('aria-label', 'Cryptocurrency price ticker');
       root.setAttribute('translate', 'no');
       root.lang = 'en';
@@ -105,33 +100,8 @@
         track.append(group);
       }
       viewport.append(track);
-      const footer = element('div', 'bbn-ticker-footer');
-      const credits = element('p', 'bbn-ticker-credits');
-      const labels = {};
-      for (const [source, provider] of Object.entries(PROVIDERS)) {
-        if (source === 'dexscreener') {
-          const separator = element('span', 'bbn-ticker-separator', ' / ');
-          separator.setAttribute('aria-hidden', 'true');
-          credits.append(separator);
-        }
-        const label = element('span', 'bbn-ticker-provider');
-        const status = element('span', '', ' · loading');
-        label.append(externalLink(provider.url, '', provider.name), document.createTextNode(` · ${provider.cadence}`), status);
-        credits.append(label);
-        labels[source] = status;
-      }
-      const pause = element('button', 'bbn-ticker-pause', 'Pause scrolling');
-      pause.type = 'button';
-      pause.setAttribute('aria-pressed', 'false');
-      pause.addEventListener('click', () => {
-        const paused = root.dataset.paused !== 'true';
-        root.dataset.paused = String(paused);
-        pause.setAttribute('aria-pressed', String(paused));
-        pause.textContent = paused ? 'Resume scrolling' : 'Pause scrolling';
-      });
-      footer.append(credits, pause);
-      root.replaceChildren(viewport, footer);
-      return { cells, labels };
+      root.replaceChildren(viewport);
+      return { cells };
     });
 
     function render() {
@@ -147,14 +117,7 @@
           setText(cell.percent, change === null ? '24h —' : `${change > 0 ? '+' : ''}${change.toFixed(2)}%`);
           setText(cell.note, status === 'stale' && price !== null ? ' · stale' : change !== null ? ' 24h' : '');
           cell.change.className = `bbn-ticker-change${change === null || status !== 'ok' ? '' : change >= 0 ? ' bbn-ticker-gain' : ' bbn-ticker-loss'}`;
-          const provider = cell.coin.source === 'coinmarketcap' ? 'CoinMarketCap' : 'DexScreener, highest-liquidity pool';
-          cell.link.title = `${cell.coin.name} · ${provider}${quote.updatedAt ? ` · Updated ${new Date(quote.updatedAt).toISOString()}` : ''}`;
-        }
-        for (const source of Object.keys(PROVIDERS)) {
-          const feed = states[source].feed;
-          const available = feed?.quotes.filter(quote => quoteStatus(quote, now) !== 'unavailable') ?? [];
-          const stale = feed?.status === 'stale' || available.some(quote => quoteStatus(quote, now) === 'stale');
-          setText(widget.labels[source], !feed ? ' · loading' : !available.length ? ' · unavailable' : stale ? ' · delayed' : '');
+          cell.link.title = `${cell.coin.name}${quote.updatedAt ? ` · Updated ${new Date(quote.updatedAt).toISOString()}` : ''}`;
         }
       }
     }
