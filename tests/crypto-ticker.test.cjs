@@ -79,12 +79,13 @@ test('Ticker forwards bounded retry-after and 429 while upstream errors remain u
     assert.equal(res.body.quotes.length,0);
   }
 });
-test('Every published news page includes the ticker below navigation with the existing ad',()=>{
+test('Every published news page keeps the ticker below navigation without the FRIED ad',()=>{
   for(const file of ['index.html',...['bitcoin','ethereum','solana','markets','regulation','story'].map(name=>name+'/index.html')]){
     const html=fs.readFileSync(path.join(root,file),'utf8');
     assert.equal((html.match(/data-crypto-ticker/g)||[]).length,1);
     assert.match(html,/<script src="\/crypto-ticker.js\?v=6" defer><\/script>/);
     assert.ok(html.indexOf('site-header-spacer')<html.indexOf('data-crypto-ticker'));
-    assert.ok(html.indexOf('data-crypto-ticker')<html.indexOf('class="fried-banner"'));
+    assert.ok(html.indexOf('data-crypto-ticker')<html.indexOf('<main'));
+    assert.doesNotMatch(html,/fried-banner|\/fried-ad\.(?:css|js)/);
   }
 });
