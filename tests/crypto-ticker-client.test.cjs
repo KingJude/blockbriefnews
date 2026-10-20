@@ -5,8 +5,9 @@ const test = require('node:test');
 
 const script = readFileSync(new URL('../crypto-ticker.js', `file://${__filename}`), 'utf8');
 const START = Date.parse('2026-10-20T04:00:00Z');
-const SDEX = 'dex:solana:rMVmRp5DJch9sVxJTgchcDbgkK3phgmEd9a8Yk3PLEX';
-const FRIED = 'dex:solana:3LaXmnVQxMMArywUBJjGA5EKbUdJ17PFor3M5oeupump';
+const SOL = 'jup:So11111111111111111111111111111111111111112';
+const SDEX = 'jup:rMVmRp5DJch9sVxJTgchcDbgkK3phgmEd9a8Yk3PLEX';
+const FRIED = 'jup:3LaXmnVQxMMArywUBJjGA5EKbUdJ17PFor3M5oeupump';
 
 class Node {
   constructor(tag) { this.tagName = tag.toUpperCase(); this.children = []; this.attributes = {}; this.dataset = {}; this.events = {}; this.className = ''; this.text = ''; }
@@ -28,7 +29,7 @@ const row = (key, source, extra = {}) => ({ key, source, symbol: 'untrusted', na
 const defaultFeed = source => ({
   source, status: 'ok', quotes: source === 'coinmarketcap'
     ? [row('cmc:3717', source, { symbol: 'BTC', price: 999_999 }), row('cmc:1027', source), row('cmc:1', source)]
-    : [row(SDEX, source), row(FRIED, source, { price: .0000345 })],
+    : [row(SOL, source), row(SDEX, source), row(FRIED, source, { price: .0000345 })],
 });
 
 async function harness(feed = defaultFeed, rootCount = 1) {
@@ -79,11 +80,12 @@ test('mounts once per section, shares page requests and uses only exact configur
   assert.equal(cells.length, 16, 'the second copy supports continuous scrolling');
   assert.deepEqual(cells.slice(0, 8).map(cell => byClass(cell, 'bbn-ticker-symbol')[0].textContent), ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE', 'SDEX', 'FRIED']);
   assert.equal(byClass(cells[0], 'bbn-ticker-quote')[0].children[0].textContent, '$12,345.68');
-  assert.equal(byClass(cells[2], 'bbn-ticker-quote')[0].children[0].textContent, '—', 'missing known-key data never becomes an invented price');
+  assert.equal(byClass(cells[2], 'bbn-ticker-quote')[0].children[0].textContent, '$12,345.68', 'native SOL uses its configured Jupiter mint');
+  assert.equal(byClass(cells[3], 'bbn-ticker-quote')[0].children[0].textContent, '—', 'missing known-key data never becomes an invented price');
   assert.equal(byClass(cells[7], 'bbn-ticker-quote')[0].children[0].textContent, '$0.0000345');
   assert.doesNotMatch(page.root.textContent, /untrusted|onerror|999,999/);
   const links = all(page.root, node => node.tagName === 'A');
-  assert.ok(links.every(link => /^https:\/\/(?:coinmarketcap\.com|dexscreener\.com)\//.test(link.href)));
+  assert.ok(links.every(link => /^https:\/\/(?:coinmarketcap\.com|jup\.ag)\//.test(link.href)));
   assert.equal(byClass(page.root, 'bbn-ticker-group')[1].getAttribute('aria-hidden'), 'true');
   assert.ok(cells.slice(8).every(cell => cell.children[0].tabIndex === -1));
   page.runAgain();
@@ -103,13 +105,15 @@ test('labels old provider quotes stale and blanks them on expiry without another
 
 test('polling stops while hidden and resumes due feeds with independent provider intervals', async () => {
   const page = await harness();
-  await page.advance(10_000);
+  await page.advance(4_999);
+  assert.equal(page.calls.filter(call => call.source === 'jupiter').length, 1);
+  await page.advance(1);
   assert.equal(page.calls.filter(call => call.source === 'coinmarketcap').length, 1);
-  assert.equal(page.calls.filter(call => call.source === 'dexscreener').length, 2);
+  assert.equal(page.calls.filter(call => call.source === 'jupiter').length, 2);
   await page.setHidden(true);
   await page.advance(300_000);
   assert.equal(page.calls.length, 3);
   await page.setHidden(false);
   assert.equal(page.calls.filter(call => call.source === 'coinmarketcap').length, 2);
-  assert.equal(page.calls.filter(call => call.source === 'dexscreener').length, 3);
+  assert.equal(page.calls.filter(call => call.source === 'jupiter').length, 3);
 });

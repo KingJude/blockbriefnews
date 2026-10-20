@@ -29,9 +29,27 @@ test('Ticker uses the fixed shared feed without forwarding credentials or visito
   assert.ok(!JSON.stringify(res.body).includes('secret'));
   assert.equal(res.headers['Vercel-CDN-Cache-Control'],'public, s-maxage=2');
 });
+test('Jupiter proxy preserves the shared five-second prices without adding edge-cache delay',async()=>{
+  const mint='3LaXmnVQxMMArywUBJjGA5EKbUdJ17PFor3M5oeupump';
+  let fetched;
+  const run=handler(async(url,options)=>{
+    fetched={url,options};
+    return Response.json({source:'jupiter',status:'ok',fetchedAt:5678,refreshAfterMs:5000,quotes:[{...quote,key:`jup:${mint}`,symbol:'FRIED',source:'jupiter'}]});
+  });
+  const res=response();
+  await run({method:'GET',url:'/api/crypto-ticker?source=jupiter'},res);
+  assert.equal(fetched.url,'https://solanadex.io/api/crypto-ticker/scroll?source=jupiter');
+  assert.deepEqual(Object.keys(fetched.options.headers),['Accept']);
+  assert.equal(res.statusCode,200);
+  assert.equal(res.body.refreshAfterMs,5000);
+  assert.equal(res.body.quotes[0].key,`jup:${mint}`);
+  assert.equal(res.body.quotes[0].source,'jupiter');
+  assert.equal(res.headers['Cache-Control'],'no-store');
+  assert.equal(res.headers['Vercel-CDN-Cache-Control'],undefined);
+});
 test('Ticker rejects unknown sources, extra parameters and duplicate sources without fetching',async()=>{
   let calls=0;const run=handler(async()=>{calls++;});
-  for(const query of ['', '?source=wbtc', '?source=coinmarketcap&url=https://example.com', '?source=coinmarketcap&source=dexscreener']){
+  for(const query of ['', '?source=wbtc', '?source=dexscreener', '?source=coinmarketcap&url=https://example.com', '?source=coinmarketcap&source=dexscreener']){
     const res=response();await run({method:'GET',url:'/api/crypto-ticker'+query},res);assert.equal(res.statusCode,400);
   }
   const res=response();await run({method:'POST',url:'/api/crypto-ticker?source=coinmarketcap'},res);assert.equal(res.statusCode,405);
@@ -54,7 +72,7 @@ test('Every published news page includes the ticker below navigation with the ex
   for(const file of ['index.html',...['bitcoin','ethereum','solana','markets','regulation','story'].map(name=>name+'/index.html')]){
     const html=fs.readFileSync(path.join(root,file),'utf8');
     assert.equal((html.match(/data-crypto-ticker/g)||[]).length,1);
-    assert.match(html,/<script src="\/crypto-ticker.js\?v=3" defer><\/script>/);
+    assert.match(html,/<script src="\/crypto-ticker.js\?v=4" defer><\/script>/);
     assert.ok(html.indexOf('site-header-spacer')<html.indexOf('data-crypto-ticker'));
     assert.ok(html.indexOf('data-crypto-ticker')<html.indexOf('class="fried-banner"'));
   }
