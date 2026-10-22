@@ -169,7 +169,7 @@
           const change = status === 'unavailable' ? null : quote.change24h;
           displays.set(coin.key, {
             key, price: formatPrice(price), percent: change === null ? '24h —' : `${change > 0 ? '+' : ''}${change.toFixed(2)}%`,
-            note: status === 'stale' && price !== null ? ' · stale' : change !== null ? ' 24h' : '',
+            note: change !== null ? ' 24h' : '',
             className: `bbn-ticker-change${change === null || status !== 'ok' ? '' : change >= 0 ? ' bbn-ticker-gain' : ' bbn-ticker-loss'}`,
             title: `${coin.name}${quote.updatedAt ? ` · Updated ${new Date(quote.updatedAt).toISOString()}` : ''}`,
           });
