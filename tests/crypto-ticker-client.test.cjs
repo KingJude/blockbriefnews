@@ -104,10 +104,11 @@ test('mounts once per section, shares page requests and uses only exact configur
   assert.equal(page.calls.length, 2, 'loading the asset again does not duplicate polling');
 });
 
-test('labels old provider quotes stale and blanks them on expiry without another CMC request', async () => {
+test('keeps delayed provider quotes neutral with a 24h label and blanks them on expiry without another CMC request', async () => {
   const page = await harness(source => ({ source, status: 'ok', quotes: source === 'coinmarketcap' ? [row('cmc:1', source, { updatedAt: START - 1_795_000 })] : [] }));
   const btc = byClass(page.root, 'bbn-ticker-item')[0];
-  assert.match(btc.textContent, /stale/);
+  assert.match(btc.textContent, /24h/);
+  assert.doesNotMatch(btc.textContent, /stale/);
   assert.doesNotMatch(byClass(btc, 'bbn-ticker-change')[0].className, /gain|loss/);
   await page.advance(6_000);
   assert.equal(byClass(btc, 'bbn-ticker-quote')[0].children[0].textContent, '—');
@@ -161,7 +162,10 @@ test('stale cached feeds render immediately and refresh despite a recent cache r
     assert.equal(btc.children[0].title, `Bitcoin · Updated ${new Date(updatedAt).toISOString()}`);
     assert.equal(btc.children[0].href, 'https://coinmarketcap.com/currencies/bitcoin/');
     assert.doesNotMatch(page.root.textContent, /poisoned identity/);
-    if (oldQuote) assert.match(btc.textContent, /stale/);
+    if (oldQuote) {
+      assert.match(btc.textContent, /24h/);
+      assert.doesNotMatch(btc.textContent, /stale/);
+    }
   }
 });
 
