@@ -7,7 +7,7 @@ const vm=require('node:vm');
 const root=path.join(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 function moduleContext(file,fetcher=async()=>{throw Error('offline')}){
-  const c=vm.createContext({module:{exports:{}},URL,Date,AbortController,AbortSignal,setTimeout,clearTimeout,fetch:fetcher});
+  const c=vm.createContext({module:{exports:{}},URL,Date,AbortController,AbortSignal,Buffer,Response,setTimeout,clearTimeout,fetch:fetcher});
   vm.runInContext(read(file),c);return c;
 }
 const news=moduleContext('api/news.js');
@@ -83,12 +83,47 @@ test('Both APIs reject unsupported methods before contacting providers',async()=
   for(const file of ['api/news.js','api/fried.js']){const c=moduleContext(file,async()=>{calls++;throw Error()});for(const method of ['POST','OPTIONS']){const res=response();await c.module.exports({method},res);assert.equal(res.statusCode,method==='POST'?405:204)}}
   assert.equal(calls,0);
 });
-test('FRIED validates mint and selects greatest liquidity, with honest failures',async()=>{
+test('FRIED compatibility API reads only the exact shared Jupiter quote',async()=>{
   const mint='3LaXmnVQxMMArywUBJjGA5EKbUdJ17PFor3M5oeupump';
-  const pair=(address,usd,liquidity)=>({chainId:'solana',baseToken:{address},priceUsd:usd,liquidity:{usd:liquidity}});
-  const c=moduleContext('api/fried.js',async()=>({ok:true,json:async()=>[pair('impostor',99,999999),pair(mint,.002,50),pair(mint,.003,100)]}));
-  const res=response();await c.module.exports({method:'GET'},res);assert.equal(res.body.usd,.003);assert.equal(res.body.mint,mint);
+  const updatedAt=Date.now()-1000;
+  const feed={source:'jupiter',status:'ok',quotes:[
+    {key:'jup:impostor',source:'jupiter',symbol:'FRIED',price:99,change24h:99,updatedAt},
+    {key:`jup:${mint}`,source:'jupiter',symbol:'FRIED',price:.003,change24h:-1.25,updatedAt}
+  ]};
+  let request;
+  const c=moduleContext('api/fried.js',async(url,options)=>{request={url,options};return new Response(JSON.stringify(feed),{status:200})});
+  const res=response();await c.module.exports({method:'GET'},res);
+  assert.equal(request.url,'https://solanadex.io/api/crypto-ticker/scroll?source=jupiter');
+  assert.deepEqual({...request.options.headers},{Accept:'application/json'});assert.equal(request.options.redirect,'error');
+  assert.equal(res.statusCode,200);assert.equal(res.body.usd,.003);assert.equal(res.body.usd_24h_change,-1.25);
+  assert.equal(res.body.mint,mint);assert.equal(res.body.source,'Jupiter');assert.equal(res.body.updatedAt,updatedAt);
+  assert.equal(res.headers['Cache-Control'],'no-store');
+  const head=response();await c.module.exports({method:'HEAD'},head);assert.equal(head.statusCode,200);assert.equal(head.body,undefined);
   const fail=response();await moduleContext('api/fried.js').module.exports({method:'HEAD'},fail);assert.equal(fail.statusCode,503);assert.equal(fail.body,undefined);assert.equal(fail.headers['Cache-Control'],'no-store');
+});
+test('FRIED compatibility API rejects missing, expired, malformed and oversized shared data',async()=>{
+  const mint='3LaXmnVQxMMArywUBJjGA5EKbUdJ17PFor3M5oeupump';
+  const valid={key:`jup:${mint}`,source:'jupiter',symbol:'FRIED',price:.003,change24h:null,updatedAt:Date.now()-1000};
+  const bodies=[
+    {source:'jupiter',status:'ok',quotes:[{...valid,key:'jup:impostor'}]},
+    {source:'jupiter',status:'stale',quotes:[{...valid,updatedAt:Date.now()-120001}]},
+    {source:'coinmarketcap',status:'ok',quotes:[valid]},
+    '{not-json',
+    'x'.repeat(32769)
+  ];
+  for(const body of bodies){
+    const value=typeof body==='string'?body:JSON.stringify(body);
+    const c=moduleContext('api/fried.js',async()=>new Response(value,{status:200}));
+    const res=response();await c.module.exports({method:'GET'},res);
+    assert.equal(res.statusCode,503);assert.equal(res.body.ok,false);assert.equal(res.headers['Cache-Control'],'no-store');
+  }
+});
+test('Published market-data paths use only the local shared-feed proxies',()=>{
+  const active=['api/fried.js','api/crypto-ticker.js','index.html','future-home.html','home.html'];
+  for(const file of active) assert.doesNotMatch(read(file),/api\.(?:coingecko|dexscreener|geckoterminal)\.com/i,file);
+  const home=read('index.html');
+  for(const value of ['/api/crypto-ticker?source=coinmarketcap','/api/crypto-ticker?source=jupiter','cmc:1','cmc:1027','jup:So11111111111111111111111111111111111111112','jup:3LaXmnVQxMMArywUBJjGA5EKbUdJ17PFor3M5oeupump']) assert.ok(home.includes(value),value);
+  assert.match(home,/https:\/\/dexscreener\.com\/solana\/3LaXmnVQxMMArywUBJjGA5EKbUdJ17PFor3M5oeupump/);
 });
 test('HTML inline scripts compile, structured metadata parses and skip targets exist',()=>{
   for(const file of ['index.html','future-home.html',...['bitcoin','ethereum','solana','markets','regulation','story'].map(x=>`${x}/index.html`)] ){
