@@ -74,6 +74,7 @@ test('Published asset manifest excludes source, tests and deployment files',()=>
   assert.ok(manifest['/index.html']);assert.ok(manifest['/assets/world-clock-cities.json']);
   assert.ok(Object.keys(manifest).every(p=>!/^\/(?:api|tests|scripts|cloudflare|\.git)\//.test(p)));
   assert.equal(manifest['/vercel.json'],undefined);
+  assert.equal(manifest['/wrangler.jsonc'],undefined);
 });
 
 test('Worker market binding preserves fixed destinations, redirect refusal and CMC cache only',async()=>{

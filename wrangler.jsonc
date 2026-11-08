@@ -1,13 +1,16 @@
 {
   "name": "blockbriefnews-production",
   "account_id": "c4e7651fa42b6e58fb25cfec8ca04c70",
-  "main": "../.cloudflare/worker.mjs",
+  "main": ".cloudflare/worker.mjs",
+  "build": {
+    "command": "node --test tests/*.test.cjs && node scripts/update-csp.cjs --check && node cloudflare/build.cjs"
+  },
   "compatibility_date": "2026-11-08",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "services": [{"binding": "MARKET_FEED", "service": "solanadex-main-production"}],
   "assets": {
-    "directory": "../.cloudflare/public",
+    "directory": ".cloudflare/public",
     "binding": "ASSETS",
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "none",

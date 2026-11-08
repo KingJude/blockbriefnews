@@ -3,7 +3,7 @@ const FEEDS = [
   { name: "Decrypt", url: "https://decrypt.co/feed", weight: 3 },
   { name: "Cointelegraph", url: "https://cointelegraph.com/rss", weight: 3 },
   { name: "CNBC", url: "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10000664", weight: 5, cryptoOnly: true },
-  { name: "CoinGape", url: "https://coingape.com/feed/", weight: 3 },
+  { name: "Bitcoin Magazine", url: "https://bitcoinmagazine.com/feed", weight: 3 },
   { name: "U.Today", url: "https://u.today/rss", weight: 3 },
   { name: "Coin Bureau", url: "https://coinbureau.com/explore", weight: 3, format: "coinbureau" },
   { name: "SEC", url: "https://www.sec.gov/news/pressreleases.rss", weight: 6, cryptoOnly: true }
