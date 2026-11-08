@@ -111,7 +111,13 @@ export default {
     const marketOptions = {onError, fetch: (target, init) => {
       // Workers rejects redirect:"error". Manual mode plus the handler's !ok
       // check preserves the same refusal to follow redirects to another host.
-      const upstreamRequest = new Request(target, {...init, redirect:'manual'});
+      const headers = new Headers(init?.headers);
+      // The private market service uses Cloudflare's visitor identity for its
+      // limits. Preserve only that trusted header on the internal service hop.
+      if (env.MARKET_FEED && request.headers.has('CF-Connecting-IP')) {
+        headers.set('CF-Connecting-IP', request.headers.get('CF-Connecting-IP'));
+      }
+      const upstreamRequest = new Request(target, {...init, headers, redirect:'manual'});
       return env.MARKET_FEED ? env.MARKET_FEED.fetch(upstreamRequest) : fetch(upstreamRequest);
     }};
     let response;
