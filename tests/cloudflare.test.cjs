@@ -85,12 +85,14 @@ test('Worker market binding preserves fixed destinations, redirect refusal and C
     calls.push(req);
     assert.equal(req.redirect,'manual');
     assert.equal(req.headers.get('Authorization'),null);assert.equal(req.headers.get('Cookie'),null);
+    assert.equal(req.headers.get('Origin'),null);assert.equal(req.headers.get('X-Forwarded-For'),null);
+    assert.equal(req.headers.get('CF-Connecting-IP'),'192.0.2.10');
     assert.equal(new URL(req.url).origin,'https://solanadex.io');
     assert.equal(new URL(req.url).pathname,'/api/crypto-ticker/scroll');
     return Response.json({source:new URL(req.url).searchParams.get('source'),status:'ok',fetchedAt:Date.now(),quotes:[]});
   }}};
   const ctx={waitUntil(p){tasks.push(p)}};
-  const run=source=>worker.fetch(new Request('https://blockbriefnews.com/api/crypto-ticker?source='+source,{headers:{Authorization:'private',Cookie:'private'}}),env,ctx);
+  const run=source=>worker.fetch(new Request('https://blockbriefnews.com/api/crypto-ticker?source='+source,{headers:{Authorization:'private',Cookie:'private',Origin:'https://untrusted.example','X-Forwarded-For':'203.0.113.8','CF-Connecting-IP':'192.0.2.10'}}),env,ctx);
   try {
     assert.equal((await run('coinmarketcap')).status,200);await Promise.all(tasks);
     assert.equal((await run('coinmarketcap')).status,200);assert.equal(calls.length,1);
@@ -98,4 +100,19 @@ test('Worker market binding preserves fixed destinations, redirect refusal and C
     env.MARKET_FEED.fetch=async()=>new Response(null,{status:302,headers:{Location:'https://example.com'}});
     assert.equal((await run('jupiter')).status,503);
   } finally {global.caches=originalCaches;}
+});
+
+test('Worker does not invent visitor identities or disclose them to public transports',async()=>{
+  const {default:worker}=await modulePromise;
+  const originalFetch=global.fetch;
+  const observed=[];
+  const read=async req=>{observed.push(req.headers);return Response.json({source:'jupiter',status:'ok',fetchedAt:Date.now(),quotes:[]})};
+  const url='https://blockbriefnews.com/api/crypto-ticker?source=jupiter';
+  try {
+    await worker.fetch(new Request(url,{headers:{'X-Forwarded-For':'203.0.113.8'}}),{MARKET_FEED:{fetch:read}},{waitUntil(){}});
+    global.fetch=read;
+    await worker.fetch(new Request(url,{headers:{'CF-Connecting-IP':'192.0.2.10'}}),{},{waitUntil(){}});
+    assert.equal(observed.length,2);
+    assert.ok(observed.every(headers=>!headers.has('CF-Connecting-IP')&&!headers.has('X-Forwarded-For')));
+  } finally {global.fetch=originalFetch;}
 });
