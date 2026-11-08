@@ -9,6 +9,7 @@ fs.rmSync(out, {recursive:true, force:true});
 fs.mkdirSync(assets, {recursive:true});
 const config = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
 const headers = Object.fromEntries(config.headers.find(x => x.source === '/(.*)').headers.map(x => [x.key, x.value]));
+headers['Strict-Transport-Security'] = 'max-age=63072000';
 const redirects = Object.fromEntries(config.redirects.map(x => [x.source, x.destination]));
 const release = crypto.createHash('sha256');
 const tracked = execFileSync('git', ['ls-files', '-z'], {cwd:root}).toString().split('\0').filter(Boolean);

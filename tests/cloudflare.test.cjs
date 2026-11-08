@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const {pathToFileURL} = require('node:url');
 const path = require('node:path');
 const fs = require('node:fs');
+require('node:child_process').execFileSync(process.execPath, [path.resolve(__dirname,'../cloudflare/build.cjs')]);
 const modulePromise = import(pathToFileURL(path.resolve(__dirname,'../.cloudflare/worker.mjs')));
 
 test('Cloudflare migration preserves redirects, methods, headers, assets and failure behavior', async t => {
@@ -17,6 +18,8 @@ test('Cloudflare migration preserves redirects, methods, headers, assets and fai
   }
   const www=await worker.fetch(new Request('https://www.blockbriefnews.com/bitcoin/?x=1'),env,ctx);
   assert.equal(www.headers.get('Location'),'https://blockbriefnews.com/bitcoin/?x=1');
+  const http=await worker.fetch(new Request('http://blockbriefnews.com/bitcoin/?x=1'),env,ctx);
+  assert.equal(http.headers.get('Location'),'https://blockbriefnews.com/bitcoin/?x=1');
   for(const endpoint of ['/api/news','/api/crypto-ticker?source=jupiter','/api/fried','/feed.xml']) {
     const response=await get(endpoint,{method:'POST'});
     assert.equal(response.status,405);assert.equal(response.headers.get('Cache-Control'),'no-store');
@@ -27,6 +30,7 @@ test('Cloudflare migration preserves redirects, methods, headers, assets and fai
   const asset=await get('/bitcoin/');
   assert.equal(await asset.text(),'asset');
   assert.equal(asset.headers.get('X-Content-Type-Options'),'nosniff');
+  assert.equal(asset.headers.get('Strict-Transport-Security'),'max-age=63072000');
   assert.match(asset.headers.get('Content-Security-Policy'),/script-src-attr 'none'/);
   assert.equal(asset.headers.get('X-BlockBrief-Host'),'cloudflare');
   assert.equal((await get('/bitcoin/',{method:'HEAD'})).body,null);

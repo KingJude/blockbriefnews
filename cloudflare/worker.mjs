@@ -116,8 +116,9 @@ export default {
     }};
     let response;
     try {
-      if (url.hostname === 'www.blockbriefnews.com') {
-        url.hostname = 'blockbriefnews.com'; url.protocol = 'https:';
+      if (url.hostname === 'www.blockbriefnews.com' || url.protocol !== 'https:') {
+        if (url.hostname === 'www.blockbriefnews.com') url.hostname = 'blockbriefnews.com';
+        url.protocol = 'https:';
         response = Response.redirect(url.href, 308);
       } else if (REDIRECTS[url.pathname]) {
         response = Response.redirect(new URL(REDIRECTS[url.pathname] + url.search, url.origin), 308);
