@@ -15,7 +15,7 @@ function renderFeed(data, topic = '') {
     (Number.isFinite(Date.parse(data.updatedAt)) ? `<lastBuildDate>${new Date(data.updatedAt).toUTCString()}</lastBuildDate>` : '') +
     items.map(x => `<item><title>${xml(x.title)}</title><link>${xml(articleUrl(x.link))}</link><guid isPermaLink="true">${xml(articleUrl(x.link))}</guid><description>${xml('Source: ' + x.source + '. ' + (x.description || ''))}</description><pubDate>${new Date(x.pubDate).toUTCString()}</pubDate>${(x.categories || [x.category]).filter(Boolean).map(c => '<category>' + xml(c) + '</category>').join('')}</item>`).join('') + '</channel></rss>\n';
 }
-async function handler(req, res) {
+async function handler(req, res, options = {}) {
   res.setHeader('Allow', 'GET, HEAD');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   // A feed is for discovery/subscription; indexed landing pages use the XML sitemap.
@@ -25,7 +25,9 @@ async function handler(req, res) {
   if (typeof topic !== 'string' || (topic && !Object.hasOwn(TOPICS,topic))) { res.setHeader('Cache-Control','no-store'); return res.status(400).end(); }
   try {
     // Fixed origin shares the production news cache and never fetches user-supplied URLs.
-    const response = await fetch('https://blockbriefnews.com/api/news', { signal: AbortSignal.timeout(12000) });
+    const response = options.loadNews
+      ? await options.loadNews()
+      : await fetch('https://blockbriefnews.com/api/news', { signal: AbortSignal.timeout(12000) });
     if (!response.ok) throw new Error('News unavailable');
     const data = await response.json();
     if (!data.ok || !Array.isArray(data.items)) throw new Error('Invalid news response');
@@ -33,7 +35,8 @@ async function handler(req, res) {
     res.setHeader('Content-Type','application/rss+xml; charset=utf-8');
     res.setHeader('Cache-Control','public, s-maxage=300, stale-while-revalidate=600');
     return req.method === 'HEAD' ? res.status(200).end() : res.status(200).send(body);
-  } catch {
+  } catch (error) {
+    options.onError?.(error);
     res.setHeader('Cache-Control','no-store');
     res.setHeader('Content-Type','text/plain; charset=utf-8');
     return req.method === 'HEAD' ? res.status(503).end() : res.status(503).send('News feed temporarily unavailable. Please try again shortly.');

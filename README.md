@@ -1,6 +1,36 @@
 # blockbriefnews
 BlockBrief — Crypto News Without the Noise
 
+## Cloudflare hosting
+
+Cloudflare Worker: `blockbriefnews-production`. Source remains in this GitHub repository.
+The migration keeps all public pages and the existing API handlers. News and RSS
+share the Worker's edge cache; RSS does not call back to the Vercel site. Market
+prices continue to use SolanaDEX's shared provider feeds, with the existing
+freshness validation and retry behavior. No database or private API key is needed.
+
+Build and validate before publishing:
+
+```sh
+node scripts/update-csp.cjs --check
+node cloudflare/build.cjs
+node --test tests/*.test.cjs
+npx wrangler deploy --config cloudflare/wrangler.jsonc
+```
+
+The build copies only public assets, derives security headers and redirects from
+`vercel.json`, and adapts the dependency-free CommonJS API handlers into an ES
+module Worker. Generated files are ignored by Git. The Worker adds an
+`X-BlockBrief-Release` response header for deployment verification. Its temporary
+workers.dev address is marked noindex. `www` redirects to the canonical apex.
+
+DNS uses the Cloudflare account's assigned nameservers. Keep the existing Vercel
+project and its DNS records available for rollback until the new production
+domain is verified. Domain registration and renewal remain at Vercel; changing
+the host does not transfer domain registration. Cloudflare deployments currently
+use the command above or the connected deployment API; pushing GitHub alone
+does not automatically publish to Cloudflare.
+
 
 ## Content Security Policy
 
