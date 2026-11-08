@@ -77,6 +77,29 @@ test('Published asset manifest excludes source, tests and deployment files',()=>
   assert.equal(manifest['/wrangler.jsonc'],undefined);
 });
 
+test('cache read or write failures do not interrupt healthy news, RSS or prices',async()=>{
+  const {default:worker}=await modulePromise;
+  const originalFetch=global.fetch,originalCaches=global.caches;
+  global.fetch=async()=>new Response(`<rss><channel><item><title>Bitcoin network update</title><link>https://www.coindesk.com/test</link><pubDate>${new Date().toUTCString()}</pubDate></item></channel></rss>`);
+  const env={MARKET_FEED:{fetch:async()=>Response.json({source:'coinmarketcap',status:'ok',fetchedAt:Date.now(),quotes:[]})}};
+  try {
+    for (const failure of ['read','write','both']) {
+      const tasks=[];
+      global.caches={default:{
+        match:async()=>{if(failure!=='write')throw Error('Cache read failed')},
+        put:async()=>{if(failure!=='read')throw Error('Cache write failed')}
+      }};
+      const ctx={waitUntil(p){tasks.push(p)}};
+      for (const pathname of ['/api/news','/feed.xml','/api/crypto-ticker?source=coinmarketcap']) {
+        const response=await worker.fetch(new Request('https://blockbriefnews.com'+pathname),env,ctx);
+        assert.equal(response.status,200,`${failure}: ${pathname}`);
+        assert.ok((await response.text()).length>0);
+      }
+      await Promise.all(tasks);
+    }
+  } finally {global.fetch=originalFetch;global.caches=originalCaches;}
+});
+
 test('Worker market binding preserves fixed destinations, redirect refusal and CMC cache only',async()=>{
   const {default:worker}=await modulePromise;
   const originalCaches=global.caches;

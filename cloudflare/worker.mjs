@@ -26,7 +26,11 @@ export async function invoke(handler, request, options) {
 }
 
 const pendingNews = new Map();
-async function refreshNews(key, cache) {
+async function cachedResponse(cache, key) {
+  try { return cache ? await cache.match(key) : null; }
+  catch { return null; } // Cache availability must not block a healthy origin.
+}
+async function refreshNews(key, cache, ctx) {
   if (!pendingNews.has(key)) {
     const pending = (async () => {
       const response = await invoke(newsHandler, new Request(key));
@@ -35,7 +39,7 @@ async function refreshNews(key, cache) {
         stored.headers.set('Cache-Control', 'public, max-age=780');
         stored.headers.set('X-News-Fresh-Until', String(Date.now() + 180000));
         stored.headers.set('X-News-Expires-At', String(Date.now() + 780000));
-        await cache.put(new Request(key), stored);
+        ctx.waitUntil(Promise.resolve().then(() => cache.put(new Request(key), stored)).catch(() => {}));
       }
       return {status: response.status, headers: [...response.headers], body: await response.text()};
     })();
@@ -50,10 +54,10 @@ async function refreshNews(key, cache) {
 export async function loadNews(origin, ctx, cache = globalThis.caches?.default) {
   // Ignore arbitrary query strings and visitor headers in the shared public cache.
   const key = origin + '/api/news?release=' + RELEASE;
-  const cached = cache ? await cache.match(new Request(key)) : null;
+  const cached = await cachedResponse(cache, new Request(key));
   if (cached && Number(cached.headers.get('X-News-Expires-At')) > Date.now()) {
     if (Number(cached.headers.get('X-News-Fresh-Until')) <= Date.now()) {
-      ctx.waitUntil(refreshNews(key, cache).then(() => {}).catch(() => {}));
+      ctx.waitUntil(refreshNews(key, cache, ctx).then(() => {}).catch(() => {}));
     }
     const response = new Response(cached.body, cached);
     response.headers.set('Cache-Control', 's-maxage=180, stale-while-revalidate=600');
@@ -61,7 +65,7 @@ export async function loadNews(origin, ctx, cache = globalThis.caches?.default) 
     response.headers.delete('X-News-Expires-At');
     return response;
   }
-  return refreshNews(key, cache);
+  return refreshNews(key, cache, ctx);
 }
 
 function finish(response, request) {
@@ -84,7 +88,7 @@ async function loadTicker(request, ctx, options) {
     && url.searchParams.toString() === 'source=coinmarketcap';
   const key = new Request(url.origin + '/api/crypto-ticker?source=coinmarketcap&release=' + RELEASE);
   if (canCache) {
-    const stored = await cache.match(key);
+    const stored = await cachedResponse(cache, key);
     if (stored && Number(stored.headers.get('X-Ticker-Expires-At')) > Date.now()) {
       const response = new Response(stored.body, stored);
       response.headers.set('Cache-Control','no-store');
@@ -99,7 +103,7 @@ async function loadTicker(request, ctx, options) {
     const stored = new Response(response.clone().body,response);
     stored.headers.set('Cache-Control','public, max-age=2');
     stored.headers.set('X-Ticker-Expires-At',String(Date.now()+2000));
-    ctx.waitUntil(cache.put(key,stored).catch(()=>{}));
+    ctx.waitUntil(Promise.resolve().then(() => cache.put(key,stored)).catch(()=>{}));
   }
   return response;
 }

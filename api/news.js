@@ -89,7 +89,27 @@ function categoriesFor(title, description) {
 function normalizeTitle(s=""){ return s.toLowerCase().replace(/[^a-z0-9 ]/g," ").replace(/\b(the|a|an|to|of|for|and|in|on|as|with|at|by|from)\b/g," ").replace(/\s+/g," ").trim(); }
 function similarity(a,b){ const na=normalizeTitle(a),nb=normalizeTitle(b);if(na&&na===nb)return 1;const A=new Set(na.split(" ").filter(x=>x.length>2)),B=new Set(nb.split(" ").filter(x=>x.length>2));if(Math.min(A.size,B.size)<4)return 0;let common=0;for(const x of A)if(B.has(x))common++;return common/(A.size+B.size-common); }
 function importance(item){ const t=`${item.title} ${item.description}`.toLowerCase(); let s=item.sourceWeight||0; const rules=[[/hack|exploit|breach|stolen|attack|rollback|outage|bankrupt|insolven|fraud/,8],[/sec|cftc|regulat|law|legislat|court|congress|senate|government|enforcement/,7],[/etf|federal reserve|fed |interest rate|inflation|treasury/,6],[/bitcoin|ethereum|solana/,4],[/binance|coinbase|kraken|tether|circle|stablecoin/,4],[/billion|million|record|surge|plunge|rally|selloff|liquidat/,3]]; for(const [r,n] of rules)if(r.test(t))s+=n; const age=(Date.now()-new Date(item.pubDate).getTime())/36e5; if(Number.isFinite(age))s+=Math.max(0,6-Math.min(age,24)/4); return s; }
-async function fetchFeed(feed){ const c=new AbortController(),timer=setTimeout(()=>c.abort(),8000); try{ const r=await fetch(feed.url,{signal:c.signal,headers:{"User-Agent":"BlockBrief/1.1 (+https://blockbriefnews.com)","Accept":"application/rss+xml, application/atom+xml, application/xml, text/xml, */*"}}); if(!r.ok)throw new Error(`${feed.name} returned ${r.status}`); const body=await r.text(); let items=feed.format==="coinbureau"?parseCoinBureau(body,feed):parseFeed(body,feed); if(!items.length)throw new Error(`${feed.name} returned no readable articles`); if(feed.cryptoOnly)items=items.filter(x=>CRYPTO_RE.test(`${x.title} ${x.description}`.toLowerCase())); return items; } finally{clearTimeout(timer);} }
+const MAX_FEED_BYTES = 4 * 1024 * 1024;
+async function readFeedBody(response) {
+  if (Number(response.headers.get('Content-Length')) > MAX_FEED_BYTES) {
+    await response.body?.cancel().catch(() => {});
+    throw new Error('Feed too large');
+  }
+  if (!response.body) throw new Error('Empty feed');
+  const reader = response.body.getReader(), chunks = [];
+  let bytes = 0;
+  try {
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > MAX_FEED_BYTES) throw new Error('Feed too large');
+      chunks.push(Buffer.from(value));
+    }
+  } finally { await reader.cancel().catch(() => {}); }
+  return Buffer.concat(chunks).toString('utf8');
+}
+async function fetchFeed(feed){ const c=new AbortController(),timer=setTimeout(()=>c.abort(),8000); try{ const r=await fetch(feed.url,{signal:c.signal,headers:{"User-Agent":"BlockBrief/1.1 (+https://blockbriefnews.com)","Accept":"application/rss+xml, application/atom+xml, application/xml, text/xml, */*"}}); if(!r.ok){await r.body?.cancel().catch(()=>{});throw new Error(`${feed.name} returned ${r.status}`)} const body=await readFeedBody(r); let items=feed.format==="coinbureau"?parseCoinBureau(body,feed):parseFeed(body,feed); if(!items.length)throw new Error(`${feed.name} returned no readable articles`); if(feed.cryptoOnly)items=items.filter(x=>CRYPTO_RE.test(`${x.title} ${x.description}`.toLowerCase())); return items; } finally{clearTimeout(timer);} }
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Allow', 'GET, HEAD, OPTIONS');

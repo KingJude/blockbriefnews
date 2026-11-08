@@ -70,7 +70,7 @@ test('Deduplication does not discard unrelated short headlines',()=>{
 });
 test('News survives partial provider failure and sorts by publication date',async()=>{
   let i=0;
-  const c=moduleContext('api/news.js',async()=>{const n=++i;if(n>2)throw Error('provider down');return {ok:true,text:async()=>rss(n===1?'Bitcoin price rises':'Ethereum upgrade launches',`https://example.com/${n}`,n===1?'2026-01-01':'2026-01-02')}});
+  const c=moduleContext('api/news.js',async()=>{const n=++i;if(n>2)throw Error('provider down');return new Response(rss(n===1?'Bitcoin price rises':'Ethereum upgrade launches',`https://example.com/${n}`,n===1?'2026-01-01':'2026-01-02'))});
   const res=response();await c.module.exports({method:'GET'},res);
   assert.equal(res.statusCode,200);assert.equal(res.body.count,2);
   assert.equal(res.body.items[0].title,'Ethereum upgrade launches');assert.equal(res.body.errors.length,6);
@@ -121,9 +121,25 @@ test('FRIED compatibility API rejects missing, expired, malformed and oversized 
 test('Published market-data paths use only the local shared-feed proxies',()=>{
   const active=['api/fried.js','api/crypto-ticker.js','index.html','future-home.html','home.html'];
   for(const file of active) assert.doesNotMatch(read(file),/api\.(?:coingecko|dexscreener|geckoterminal)\.com/i,file);
-  const home=read('index.html');
-  for(const value of ['/api/crypto-ticker?source=coinmarketcap','/api/crypto-ticker?source=jupiter','cmc:1','cmc:1027','jup:So11111111111111111111111111111111111111112','jup:3LaXmnVQxMMArywUBJjGA5EKbUdJ17PFor3M5oeupump']) assert.ok(home.includes(value),value);
-  assert.match(home,/https:\/\/dexscreener\.com\/solana\/3LaXmnVQxMMArywUBJjGA5EKbUdJ17PFor3M5oeupump/);
+  const home=read('index.html'),ticker=read('crypto-ticker.js');
+  assert.match(home,/id="marketStrip" data-market-cards/);
+  assert.doesNotMatch(home,/fetch\([^\n]*api\/crypto-ticker|loadMarkets/);
+  for(const value of ['cmc:1','cmc:1027','jup:So11111111111111111111111111111111111111112','jup:3LaXmnVQxMMArywUBJjGA5EKbUdJ17PFor3M5oeupump']) assert.ok(ticker.includes(value),value);
+  assert.match(ticker,/https:\/\/dexscreener\.com\/solana\/3LaXmnVQxMMArywUBJjGA5EKbUdJ17PFor3M5oeupump/);
+});
+
+test('news bounds declared and streamed bodies, cancels oversized streams and preserves UTF-8', async () => {
+  const limit=4*1024*1024;
+  let cancelled=0, reads=0;
+  const response=new Response(new ReadableStream({pull(controller){reads++;controller.enqueue(new Uint8Array(1024*1024))},cancel(){cancelled++}}));
+  await assert.rejects(news.readFeedBody(response),/too large/);
+  assert.equal(cancelled,1); assert.ok(reads<=6);
+  const declared=new Response('small',{headers:{'Content-Length':String(limit+1)}});
+  await assert.rejects(news.readFeedBody(declared),/too large/);
+  const content=Buffer.from('Bitcoin € ₿ 世界');
+  const chunked=new Response(new ReadableStream({start(controller){for(const byte of content)controller.enqueue(Uint8Array.of(byte));controller.close()}}));
+  assert.equal(await news.readFeedBody(chunked),'Bitcoin € ₿ 世界');
+  assert.equal(await news.readFeedBody(new Response('x'.repeat(limit))),'x'.repeat(limit));
 });
 test('HTML inline scripts compile, structured metadata parses and skip targets exist',()=>{
   for(const file of ['index.html','future-home.html',...['bitcoin','ethereum','solana','markets','regulation','story'].map(x=>`${x}/index.html`)] ){
@@ -153,4 +169,24 @@ test('World clock avoids repeated DOM writes within a minute and while hidden',(
   Clock.prototype.tick.call(widget);assert.equal(writes,5);
   document.hidden=true;widget.views[0].lastMinute=undefined;
   Clock.prototype.tick.call(widget);assert.equal(writes,5);
+});
+
+test('expired briefs retain current and historical publisher links but reject unsafe fallbacks',async()=>{
+  const script=[...read('story/index.html').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].at(-1)[1].replace(/load\(\)$/,'');
+  for(const [url,allowed] of [
+    ['https://bitcoinmagazine.com/archive/example',true],
+    ['https://coingape.com/archive/example',true],
+    ['https://bitcoinmagazine.com.evil.example/story',false],
+    ['https://private@bitcoinmagazine.com/story',false],
+    ['http://bitcoinmagazine.com/story',false],
+    ['javascript:alert(1)',false]
+  ]) {
+    const appended=[];
+    const container={append(...nodes){appended.push(...nodes)}};
+    const c=vm.createContext({URL,URLSearchParams,Date,AbortSignal,location:{search:'?u='+encodeURIComponent(url)},fetch:async()=>Response.json({items:[]}),document:{getElementById:()=>({innerHTML:'',querySelector:()=>container}),createElement:tag=>({tagName:tag})}});
+    vm.runInContext(script,c);await c.load();
+    const links=appended.filter(node=>node.tagName==='a');
+    assert.equal(links.length,allowed?1:0,url);
+    if(allowed){assert.equal(links[0].href,url);assert.equal(links[0].rel,'noopener noreferrer')}
+  }
 });

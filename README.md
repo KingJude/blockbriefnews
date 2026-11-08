@@ -5,7 +5,10 @@ BlockBrief — Crypto News Without the Noise
 
 Cloudflare Worker: `blockbriefnews-production`. Source remains in this GitHub repository.
 The migration keeps all public pages and the existing API handlers. News and RSS
-share the Worker's edge cache; RSS does not call back to the Vercel site. Market
+share the Worker's edge cache; cache failures fall back to the providers instead
+of interrupting healthy feeds, and RSS does not call back to the Vercel site.
+News downloads are bounded to 4 MiB per publisher and retain the eight-second
+timeout. Oversized or unavailable sources do not discard other publishers' news. Market
 prices continue to use SolanaDEX's shared provider feeds, with the existing
 freshness validation and retry behavior. No database or private API key is needed.
 
@@ -70,4 +73,4 @@ The RSS feed is for discovery and subscriptions. It is not a replacement for the
 
 The homepage, topic pages and story view load the shared scrolling ticker below navigation. `/api/crypto-ticker?source=coinmarketcap` serves native BTC, ETH, BNB, XRP and DOGE; `source=jupiter` serves the configured SOL, SDEX and FRIED Solana mints. The internal Cloudflare service hop preserves only Cloudflare's trusted visitor IP so the shared service can enforce its limits; cookies, authorization, Origin and client-provided forwarding headers are not forwarded. No additional provider key is stored. The provider caches and credit budgets remain shared between both sites.
 
-The browser checks majors every five minutes and Solana-token prices every five seconds while the page is visible. Provider timestamps still determine freshness: delayed-but-not-expired quotes keep their original timestamps and neutral styling while displaying the `24h` label, and expired quotes are hidden. Scrolling pauses on hover or keyboard focus; keyboard browsing and reduced motion are supported. The homepage cards and the legacy `/api/fried` compatibility response use these same local proxies with exact-key and timestamp validation; the FRIED card's DEX Screener URL is navigation only, not a market-data request.
+The browser checks majors every five minutes and Solana-token prices every five seconds while the page is visible. Provider timestamps still determine freshness: delayed-but-not-expired quotes keep their original timestamps and neutral styling while displaying the `24h` label, and expired quotes are hidden. Scrolling pauses on hover or keyboard focus; keyboard browsing and reduced motion are supported. The homepage cards share the ticker's browser scheduler, requests, session cache, retry limits and expiry timer, so a page loads each source once and updates both views together. The cards reuse the ticker's existing coin images. Manual refresh respects provider intervals and Retry-After. The legacy `/api/fried` compatibility response uses the same local proxy with exact-key and timestamp validation; the FRIED card's DEX Screener URL is navigation only, not a market-data request.
