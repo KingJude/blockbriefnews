@@ -94,3 +94,14 @@ Scope: public homepage, five topic pages, transient story briefs, news and FRIED
 - The homepage cards now read `/api/crypto-ticker` for the CoinMarketCap and Jupiter batches, select the exact configured keys, preserve upstream timestamps and hide expired or malformed quotes. `/api/fried` now reads the exact FRIED entry from the same shared Jupiter batch with bounded response size, redirect denial, timeout, exact-key validation and a two-minute expiry. The outward DEX Screener FRIED chart link remains navigation only.
 - Removed the unreachable `home-logo.html` legacy snapshot because its permanent Vercel redirect remains in place and the file retained a dormant direct CoinGecko request. Git history preserves the prior snapshot. No ticker identities, refresh intervals, provider budgets, news sources, branding, metadata, wallet behavior or trading settings changed.
 - Validation and production deployment evidence are recorded with the publishing commit and live-domain checks.
+
+
+## November 8, 2026 — Cloudflare optimization and reliability audit
+
+- Homepage price cards now share the scrolling ticker's requests, provider cadence, session snapshots, Retry-After handling and expiry timer. Removed the independent two-minute card polling loop and duplicate coin-image downloads. Expired or explicitly unavailable quotes cannot remain displayed.
+- Cache read failures fall back to the news and market providers. News cache writes run in the background; failed writes do not turn healthy news or RSS responses into errors.
+- Publisher downloads are limited to 4 MiB with stream cancellation, alongside the existing eight-second timeout and partial-source failure handling.
+- Fixed card overflow on screens at or below 360px. The clock reuses the existing WebP brand icon and loads it lazily instead of requesting the separate 960 KB PNG. Background homepage news polling pauses while hidden.
+- Older Bitcoin Magazine briefs retain a safe original-publisher link after leaving the live feed. Historical CoinGape links remain supported; credential-bearing, insecure or lookalike fallback destinations remain rejected.
+- Automated regression coverage includes shared card/ticker requests, expiry, rate-limit backoff, cache failures, bounded streaming and original-link validation. CSP hashes regenerated without relaxing the policy.
+- Cloudflare preview verified at 320, 390, 768 and 1440px frame widths, with live prices/headlines, Bitcoin filtering, language switching, and city search/add/remove. No page-level horizontal overflow after the small-screen fix.

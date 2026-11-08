@@ -46,9 +46,15 @@ async function harness(feed = defaultFeed, rootCount = 1, options = {}) {
     return { format(value) { formatting.calls++; return formatter.format(value); } };
   } };
   const timers = new Map(), calls = [], roots = Array.from({ length: rootCount }, () => new Node('section'));
+  const cards = options.cards ? new Node('div') : null;
+  const refreshButton = new Node('button');
   const document = new Node('document');
   document.readyState = 'complete'; document.hidden = false;
-  document.querySelectorAll = selector => { assert.equal(selector, '[data-crypto-ticker]'); return roots; };
+  document.querySelectorAll = selector => {
+    if (selector === '[data-crypto-ticker]') return roots;
+    if (selector === '[data-market-cards]') return cards ? [cards] : [];
+    assert.equal(selector, '[data-refresh-market]'); return [refreshButton];
+  };
   document.createElement = tag => new Node(tag);
   document.createTextNode = text => { const node = new Node('#text'); node.textContent = text; return node; };
   const window = new Node('window');
@@ -70,7 +76,7 @@ async function harness(feed = defaultFeed, rootCount = 1, options = {}) {
   runInNewContext(script, context);
   await flush();
   return {
-    root: roots[0], roots, calls, document, window, storage, formatting,
+    root: roots[0], roots, cards, refreshButton, calls, document, window, storage, formatting,
     runAgain() { runInNewContext(script, context); },
     async advance(ms) {
       const target = now + ms;
@@ -102,6 +108,35 @@ test('mounts once per section, shares page requests and uses only exact configur
   assert.ok(cells.slice(8).every(cell => cell.children[0].tabIndex === -1));
   page.runAgain();
   assert.equal(page.calls.length, 2, 'loading the asset again does not duplicate polling');
+});
+
+test('homepage cards share ticker polling, expiry and backoff without extra calls or DOM replacement', async () => {
+  const page = await harness(source => source === 'coinmarketcap'
+    ? {...defaultFeed(source), quotes: [row('cmc:1', source, {updatedAt: START - 1_795_000})]}
+    : {ok: false, status: 429, headers: {get() {return '30'}}}, 1, {cards: true});
+  assert.equal(page.calls.length, 2);
+  const btc = byClass(page.cards, 'market')[0];
+  assert.equal(byClass(btc, 'price')[0].textContent, '$12,345.68');
+  assert.equal(byClass(btc, 'chg')[0].className, 'chg', 'delayed prices remain neutral');
+  for (let i=0; i<10; i++) page.refreshButton.dispatch('click');
+  await page.advance(6_000);
+  assert.equal(page.calls.length, 2, 'manual clicks cannot duplicate reads or bypass Retry-After');
+  assert.equal(byClass(btc, 'price')[0].textContent, '—', 'expired card prices disappear without another response');
+  assert.equal(byClass(btc, 'chg')[0].textContent, 'Price unavailable');
+  assert.equal(byClass(page.cards, 'market')[0], btc, 'price changes retain existing card nodes');
+  const fried = byClass(page.cards, 'market-source')[0];
+  assert.equal(fried.href, 'https://dexscreener.com/solana/3LaXmnVQxMMArywUBJjGA5EKbUdJ17PFor3M5oeupump');
+  await page.advance(24_000);
+  assert.equal(page.calls.filter(call => call.source === 'jupiter').length, 2);
+  assert.equal(page.calls.filter(call => call.source === 'coinmarketcap').length, 1);
+  page.runAgain();
+  assert.equal(page.calls.length, 3);
+});
+
+test('unavailable feeds cannot present prices even when their payload contains recent quotes', async () => {
+  const page = await harness(source => ({...defaultFeed(source), status: 'unavailable'}), 1, {cards: true});
+  assert.doesNotMatch(page.root.textContent + page.cards.textContent, /12,345|0\.0000345/);
+  assert.ok(byClass(page.cards, 'price').every(price => price.textContent === '—'));
 });
 
 test('keeps delayed provider quotes neutral with a 24h label and blanks them on expiry without another CMC request', async () => {

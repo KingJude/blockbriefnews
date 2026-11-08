@@ -101,7 +101,8 @@
 
   function start() {
     const roots = [...document.querySelectorAll('[data-crypto-ticker]')].filter(root => root.dataset.cryptoTickerReady !== 'true');
-    if (!roots.length) return;
+    const cardRoots = [...document.querySelectorAll('[data-market-cards]')].filter(root => root.dataset.marketCardsReady !== 'true');
+    if (!roots.length && !cardRoots.length) return;
     let active = true;
     let ageTimer;
     const states = Object.fromEntries(Object.keys(INTERVAL).map(source => {
@@ -155,14 +156,39 @@
       root.replaceChildren(viewport);
       return { cells };
     });
+    // Homepage cards and scrolling tickers share the same requests, retry
+    // limits, session snapshots and quote-expiry timer.
+    const cards = cardRoots.flatMap(root => {
+      root.dataset.marketCardsReady = 'true';
+      root.setAttribute('translate', 'no');
+      root.lang = 'en';
+      const cells = COINS.filter(coin => ['BTC', 'ETH', 'SOL', 'FRIED'].includes(coin.symbol)).map(coin => {
+        const node = element('div', 'market');
+        const top = element('div', 'market-top');
+        const icon = element('img', 'coin-icon');
+        icon.src = coin.iconSrc;
+        icon.alt = coin.name;
+        icon.width = 36; icon.height = 36; icon.decoding = 'async';
+        top.append(icon, element('span', 'sym', coin.symbol));
+        const price = element('div', 'price', '—');
+        const change = element('div', 'chg', 'Price unavailable');
+        node.append(top, price, change);
+        if (coin.symbol === 'FRIED') node.append(externalLink('https://dexscreener.com/solana/3LaXmnVQxMMArywUBJjGA5EKbUdJ17PFor3M5oeupump', 'market-source', 'DEX Screener ↗'));
+        return { coin, node, price, change };
+      });
+      root.replaceChildren(...cells.map(cell => cell.node));
+      return cells;
+    });
 
     function render() {
       clearTimeout(ageTimer);
       const now = Date.now();
       let nextEdge = Infinity;
       for (const coin of COINS) {
-        const quote = states[coin.source].feed?.quotes.find(quote => quote.key === coin.key) ?? emptyQuote(coin);
-        const status = quoteStatus(quote, now);
+        const feed = states[coin.source].feed;
+        const quote = ['ok', 'stale'].includes(feed?.status) ? feed.quotes.find(quote => quote.key === coin.key) ?? emptyQuote(coin) : emptyQuote(coin);
+        const ageStatus = quoteStatus(quote, now);
+        const status = ageStatus === 'ok' && feed?.status === 'stale' ? 'stale' : ageStatus;
         const key = [quote.price, quote.change24h, quote.updatedAt, status].join('|');
         if (displays.get(coin.key)?.key !== key) {
           const price = status === 'unavailable' ? null : quote.price;
@@ -171,6 +197,8 @@
             key, price: formatPrice(price), percent: change === null ? '24h —' : `${change > 0 ? '+' : ''}${change.toFixed(2)}%`,
             note: change !== null ? ' 24h' : '',
             className: `bbn-ticker-change${change === null || status !== 'ok' ? '' : change >= 0 ? ' bbn-ticker-gain' : ' bbn-ticker-loss'}`,
+            cardChange: change === null ? price === null ? 'Price unavailable' : '24h change unavailable' : `${change >= 0 ? '+' : ''}${change.toFixed(2)}% 24h`,
+            cardClass: `chg${change === null || status !== 'ok' ? '' : change >= 0 ? ' up' : ' down'}`,
             title: `${coin.name}${quote.updatedAt ? ` · Updated ${new Date(quote.updatedAt).toISOString()}` : ''}`,
           });
         }
@@ -189,6 +217,15 @@
           cell.change.className = display.className;
           cell.link.title = display.title;
         }
+      }
+      for (const cell of cards) {
+        const display = displays.get(cell.coin.key);
+        if (cell.renderKey === display.key) continue;
+        cell.renderKey = display.key;
+        setText(cell.price, display.price);
+        setText(cell.change, display.cardChange);
+        cell.change.className = display.cardClass;
+        cell.node.title = display.title;
       }
       // Wake only when a visible quote crosses its stale or expiry boundary.
       if (active && !document.hidden && nextEdge !== Infinity) ageTimer = setTimeout(render, Math.max(1, nextEdge - now));
@@ -238,6 +275,7 @@
       render();
       for (const state of Object.values(states)) void refresh(state);
     }
+    document.querySelectorAll('[data-refresh-market]').forEach(button => button.addEventListener('click', resume));
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         clearTimeout(ageTimer);
