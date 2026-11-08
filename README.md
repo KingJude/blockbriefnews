@@ -12,13 +12,12 @@ freshness validation and retry behavior. No database or private API key is neede
 Build and validate before publishing:
 
 ```sh
-node scripts/update-csp.cjs --check
-node cloudflare/build.cjs
-node --test tests/*.test.cjs
-npx wrangler deploy --config cloudflare/wrangler.jsonc
+npx wrangler deploy
 ```
 
-The build copies only public assets, derives security headers and redirects from
+The root `wrangler.jsonc` is discoverable by Cloudflare Builds. Its custom build
+runs all tests, checks Content Security Policy, and prepares the Worker and assets
+before any deployment. The build copies only public assets, derives security headers and redirects from
 `vercel.json`, and adapts the dependency-free CommonJS API handlers into an ES
 module Worker. Generated files are ignored by Git. The Worker adds an
 `X-BlockBrief-Release` response header for deployment verification. Its temporary
@@ -30,6 +29,13 @@ domain is verified. Domain registration and renewal remain at Vercel; changing
 the host does not transfer domain registration. Cloudflare deployments currently
 use the command above or the connected deployment API; pushing GitHub alone
 does not automatically publish to Cloudflare.
+
+To enable automatic publishing, open `blockbriefnews-production` in Cloudflare,
+then **Settings > Builds > Connect**. Authorize the Cloudflare GitHub App for
+`KingJude/blockbriefnews` and select branch `main`, root directory `/`, no separate
+build command, and deploy command `npx wrangler deploy`. Select or create the
+Worker's build API token when prompted. Keep preview builds disabled. Account
+authorization is still required; committing this configuration does not grant it.
 
 
 ## Content Security Policy
@@ -49,6 +55,12 @@ Commit the updated `vercel.json` with the HTML changes. Verify the Vercel previe
 Temporary preview probes use names beginning with `_` and are deliberately excluded from the inline-script allowlist. Remove them before publishing production. Do not add `unsafe-inline` or `unsafe-eval` to bypass a failed check.
 
 ## News feed discovery
+
+Eight sources are configured: CoinDesk, Decrypt, Cointelegraph, CNBC,
+Bitcoin Magazine, U.Today, Coin Bureau and the SEC. Bitcoin Magazine replaced
+CoinGape after both of CoinGape's official RSS endpoints rejected Cloudflare
+requests with HTTP 403. Original publication dates, publisher names and article
+links are retained; unavailable sources are reported in the news API's `errors`.
 
 `/feed.xml` provides RSS 2.0 with publication dates, source attribution and links to the original publishers. Topic feeds use `?topic=bitcoin`, `ethereum`, `solana`, `markets` or `regulation`; matching pages advertise the appropriate feed in HTML metadata. Feed responses share the existing production news API, use five-minute CDN caching, and return uncached errors when news is unavailable.
 

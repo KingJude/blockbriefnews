@@ -13,7 +13,7 @@ headers['Strict-Transport-Security'] = 'max-age=63072000';
 const redirects = Object.fromEntries(config.redirects.map(x => [x.source, x.destination]));
 const release = crypto.createHash('sha256');
 const tracked = execFileSync('git', ['ls-files', '-z'], {cwd:root}).toString().split('\0').filter(Boolean);
-const published = tracked.filter(file => !/^(api|scripts|tests|cloudflare|\.git)\//.test(file) && !file.startsWith('.') && !['README.md','AUDIT.md','vercel.json','placeholder.tmp','home.html','future-home.html'].includes(file));
+const published = tracked.filter(file => !/^(api|scripts|tests|cloudflare|\.git)\//.test(file) && !file.startsWith('.') && !['README.md','AUDIT.md','vercel.json','wrangler.jsonc','placeholder.tmp','home.html','future-home.html'].includes(file));
 for (const file of published) {
   const content = fs.readFileSync(path.join(root, file));
   release.update(file).update(content);
