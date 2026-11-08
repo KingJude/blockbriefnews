@@ -9,7 +9,7 @@ function retryAfterSeconds(header, fallback) {
   return Number.isFinite(seconds) ? Math.min(MAX_RETRY_SECONDS, Math.max(fallback, Math.ceil(seconds))) : fallback;
 }
 
-module.exports = async function handler(req, res) {
+module.exports = async function handler(req, res, options = {}) {
   res.setHeader('Allow', 'GET, HEAD');
   res.setHeader('Cache-Control', 'no-store');
   if (!['GET', 'HEAD'].includes(req.method)) return res.status(405).json({ error: 'Method not allowed' });
@@ -22,7 +22,7 @@ module.exports = async function handler(req, res) {
   let retryAfter = source === 'jupiter' ? 5 : 10;
   try {
     // Do not forward visitor cookies, Origin or authorization to the shared feed.
-    const upstream = await fetch(`https://solanadex.io/api/crypto-ticker/scroll?source=${source}`, {
+    const upstream = await (options.fetch || fetch)(`https://solanadex.io/api/crypto-ticker/scroll?source=${source}`, {
       headers: { Accept: 'application/json' },
       signal: AbortSignal.timeout(source === 'jupiter' ? 12000 : 16000),
       redirect: 'error'
@@ -67,7 +67,8 @@ module.exports = async function handler(req, res) {
     }
     if (req.method === 'HEAD') return res.status(200).end();
     return res.status(200).json(body);
-  } catch {
+  } catch (error) {
+    options.onError?.(error);
     res.setHeader('Retry-After', String(retryAfter));
     if (req.method === 'HEAD') return res.status(failureStatus).end();
     return res.status(failureStatus).json({ source, status: 'unavailable', fetchedAt: null, refreshAfterMs: SOURCES[source], quotes: [] });

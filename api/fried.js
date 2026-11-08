@@ -4,17 +4,17 @@ const KEY = `jup:${MINT}`;
 const FEED_URL = 'https://solanadex.io/api/crypto-ticker/scroll?source=jupiter';
 const MAX_BYTES = 32_768;
 
-module.exports = async function handler(req, res) {
+module.exports = async function handler(req, res, options = {}) {
   res.setHeader('Allow', 'GET, HEAD, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (!['GET','HEAD'].includes(req.method)) { res.setHeader('Cache-Control','no-store'); return res.status(405).json({ok:false,error:'Method not allowed'}); }
   try {
-    const response = await fetch(FEED_URL, {
+    const response = await (options.fetch || fetch)(FEED_URL, {
       headers: { Accept: 'application/json' },
       signal: AbortSignal.timeout(12000),
       redirect: 'error'
     });
-    if (!response.ok) throw new Error('Market provider unavailable');
+    if (!response.ok) throw new Error(`Market provider unavailable (${response.status})`);
     const reader = response.body.getReader();
     const chunks = [];
     let bytes = 0;
@@ -43,7 +43,8 @@ module.exports = async function handler(req, res) {
       usd_24h_change: Number.isFinite(quote.change24h) ? quote.change24h : null,
       source: 'Jupiter', updatedAt: quote.updatedAt
     });
-  } catch {
+  } catch (error) {
+    options.onError?.(error);
     res.setHeader('Cache-Control', 'no-store');
     if (req.method === 'HEAD') return res.status(503).end();
     return res.status(503).json({ ok: false, symbol: 'FRIED', error: 'FRIED price temporarily unavailable' });

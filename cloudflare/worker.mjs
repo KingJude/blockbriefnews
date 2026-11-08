@@ -37,12 +37,14 @@ async function refreshNews(key, cache) {
         stored.headers.set('X-News-Expires-At', String(Date.now() + 780000));
         await cache.put(new Request(key), stored);
       }
-      return response;
+      return {status: response.status, headers: [...response.headers], body: await response.text()};
     })();
     pendingNews.set(key, pending);
     pending.finally(() => pendingNews.delete(key)).catch(() => {});
   }
-  return (await pendingNews.get(key)).clone();
+  const snapshot = await pendingNews.get(key);
+  // Only plain data may cross request contexts in Workers; never share Response streams.
+  return new Response(snapshot.body, {status:snapshot.status,headers:snapshot.headers});
 }
 
 export async function loadNews(origin, ctx, cache = globalThis.caches?.default) {
@@ -75,7 +77,7 @@ function finish(response, request) {
   return result;
 }
 
-async function loadTicker(request, ctx) {
+async function loadTicker(request, ctx, options) {
   const url = new URL(request.url);
   const cache = globalThis.caches?.default;
   const canCache = cache && ['GET','HEAD'].includes(request.method)
@@ -90,7 +92,7 @@ async function loadTicker(request, ctx) {
       return response;
     }
   }
-  const response = await invoke(tickerHandler, canCache ? new Request(request.url) : request);
+  const response = await invoke(tickerHandler, canCache ? new Request(request.url) : request, options);
   const cacheable = response.ok && response.headers.has('Vercel-CDN-Cache-Control');
   response.headers.delete('Vercel-CDN-Cache-Control');
   if (canCache && cacheable) {
@@ -105,6 +107,13 @@ async function loadTicker(request, ctx) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    const onError = error => console.error('BlockBrief API', url.pathname, String(error?.message || 'request failed'));
+    const marketOptions = {onError, fetch: (target, init) => {
+      // Workers rejects redirect:"error". Manual mode plus the handler's !ok
+      // check preserves the same refusal to follow redirects to another host.
+      const upstreamRequest = new Request(target, {...init, redirect:'manual'});
+      return env.MARKET_FEED ? env.MARKET_FEED.fetch(upstreamRequest) : fetch(upstreamRequest);
+    }};
     let response;
     try {
       if (url.hostname === 'www.blockbriefnews.com') {
@@ -117,11 +126,11 @@ export default {
       } else if (/^\/api\/news\/?$/.test(url.pathname)) {
         response = await invoke(newsHandler, request);
       } else if (url.pathname === '/feed.xml' || /^\/api\/feed\/?$/.test(url.pathname)) {
-        response = await invoke(feedHandler, request, {loadNews: () => loadNews(url.origin, ctx)});
+        response = await invoke(feedHandler, request, {onError, loadNews: () => loadNews(url.origin, ctx)});
       } else if (/^\/api\/crypto-ticker\/?$/.test(url.pathname)) {
-        response = await loadTicker(request, ctx);
+        response = await loadTicker(request, ctx, marketOptions);
       } else if (/^\/api\/fried\/?$/.test(url.pathname)) {
-        response = await invoke(friedHandler, request);
+        response = await invoke(friedHandler, request, marketOptions);
       } else if (url.pathname.startsWith('/api/')) {
         response = new Response('Not found', {status: 404, headers: {'Cache-Control': 'no-store'}});
       } else {

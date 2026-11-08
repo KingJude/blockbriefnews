@@ -35,7 +35,8 @@ async function handler(req, res, options = {}) {
     res.setHeader('Content-Type','application/rss+xml; charset=utf-8');
     res.setHeader('Cache-Control','public, s-maxage=300, stale-while-revalidate=600');
     return req.method === 'HEAD' ? res.status(200).end() : res.status(200).send(body);
-  } catch {
+  } catch (error) {
+    options.onError?.(error);
     res.setHeader('Cache-Control','no-store');
     res.setHeader('Content-Type','text/plain; charset=utf-8');
     return req.method === 'HEAD' ? res.status(503).end() : res.status(503).send('News feed temporarily unavailable. Please try again shortly.');

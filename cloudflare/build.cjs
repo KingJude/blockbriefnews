@@ -39,7 +39,7 @@ for (const file of published) {
   manifest['/'+file]={hash:crypto.createHash('sha256').update(bytes.toString('base64')+path.extname(file).slice(1)).digest('hex').slice(0,32),size:bytes.length};
 }
 fs.writeFileSync(path.join(out,'manifest.json'),JSON.stringify(manifest));
-const metadata={main_module:'worker.mjs',compatibility_date:'2026-11-08',compatibility_flags:['nodejs_compat'],bindings:[{name:'ASSETS',type:'assets'}],assets:{config:{html_handling:'auto-trailing-slash',not_found_handling:'none',run_worker_first:true,_headers:assetHeaders}},observability:{enabled:true}};
+const metadata={main_module:'worker.mjs',compatibility_date:'2026-11-08',compatibility_flags:['nodejs_compat'],bindings:[{name:'ASSETS',type:'assets'},{name:'MARKET_FEED',type:'service',service:'solanadex-main-production'}],assets:{config:{html_handling:'auto-trailing-slash',not_found_handling:'none',run_worker_first:true,_headers:assetHeaders}},observability:{enabled:true}};
 fs.writeFileSync(path.join(out,'metadata.json'),JSON.stringify(metadata));
 fs.writeFileSync(path.join(out,'release.json'),JSON.stringify({release:releaseId,files:published.length,source:execFileSync('git',['rev-parse','HEAD'],{cwd:root}).toString().trim()},null,2));
 console.log(JSON.stringify({release:releaseId,files:published.length,workerBytes:Buffer.byteLength(worker),assetBytes:Object.values(manifest).reduce((a,x)=>a+x.size,0)}));

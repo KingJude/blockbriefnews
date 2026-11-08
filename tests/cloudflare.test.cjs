@@ -71,3 +71,27 @@ test('Published asset manifest excludes source, tests and deployment files',()=>
   assert.ok(Object.keys(manifest).every(p=>!/^\/(?:api|tests|scripts|cloudflare|\.git)\//.test(p)));
   assert.equal(manifest['/vercel.json'],undefined);
 });
+
+test('Worker market binding preserves fixed destinations, redirect refusal and CMC cache only',async()=>{
+  const {default:worker}=await modulePromise;
+  const originalCaches=global.caches;
+  const cache=new Map(),calls=[],tasks=[];
+  global.caches={default:{match:async r=>cache.get(r.url)?.clone(),put:async(r,v)=>{cache.set(r.url,v.clone())}}};
+  const env={MARKET_FEED:{fetch:async req=>{
+    calls.push(req);
+    assert.equal(req.redirect,'manual');
+    assert.equal(req.headers.get('Authorization'),null);assert.equal(req.headers.get('Cookie'),null);
+    assert.equal(new URL(req.url).origin,'https://solanadex.io');
+    assert.equal(new URL(req.url).pathname,'/api/crypto-ticker/scroll');
+    return Response.json({source:new URL(req.url).searchParams.get('source'),status:'ok',fetchedAt:Date.now(),quotes:[]});
+  }}};
+  const ctx={waitUntil(p){tasks.push(p)}};
+  const run=source=>worker.fetch(new Request('https://blockbriefnews.com/api/crypto-ticker?source='+source,{headers:{Authorization:'private',Cookie:'private'}}),env,ctx);
+  try {
+    assert.equal((await run('coinmarketcap')).status,200);await Promise.all(tasks);
+    assert.equal((await run('coinmarketcap')).status,200);assert.equal(calls.length,1);
+    assert.equal((await run('jupiter')).status,200);assert.equal((await run('jupiter')).status,200);assert.equal(calls.length,3);
+    env.MARKET_FEED.fetch=async()=>new Response(null,{status:302,headers:{Location:'https://example.com'}});
+    assert.equal((await run('jupiter')).status,503);
+  } finally {global.caches=originalCaches;}
+});
