@@ -17,7 +17,9 @@ npx wrangler deploy
 
 The root `wrangler.jsonc` is discoverable by Cloudflare Builds. Its custom build
 runs all tests, checks Content Security Policy, and prepares the Worker and assets
-before any deployment. The build copies only public assets, derives security headers and redirects from
+for local CLI deployments. Cloudflare Builds is configured with that same command
+explicitly, so validation also runs in CI. The build copies only public assets,
+derives security headers and redirects from
 `vercel.json`, and adapts the dependency-free CommonJS API handlers into an ES
 module Worker. Generated files are ignored by Git. The Worker adds an
 `X-BlockBrief-Release` response header for deployment verification. Its temporary
@@ -26,16 +28,14 @@ workers.dev address is marked noindex. `www` redirects to the canonical apex.
 DNS uses the Cloudflare account's assigned nameservers. Keep the existing Vercel
 project and its DNS records available for rollback until the new production
 domain is verified. Domain registration and renewal remain at Vercel; changing
-the host does not transfer domain registration. Cloudflare deployments currently
-use the command above or the connected deployment API; pushing GitHub alone
-does not automatically publish to Cloudflare.
+the host does not transfer domain registration.
 
-To enable automatic publishing, open `blockbriefnews-production` in Cloudflare,
-then **Settings > Builds > Connect**. Authorize the Cloudflare GitHub App for
-`KingJude/blockbriefnews` and select branch `main`, root directory `/`, no separate
-build command, and deploy command `npx wrangler deploy`. Select or create the
-Worker's build API token when prompted. Keep preview builds disabled. Account
-authorization is still required; committing this configuration does not grant it.
+Cloudflare Builds is connected to `KingJude/blockbriefnews` and watches `main`.
+Its production configuration uses root directory `/`, build command
+`node --test tests/*.test.cjs && node scripts/update-csp.cjs --check && node cloudflare/build.cjs`,
+and deploy command `npx wrangler deploy`. Changes merged into `main` trigger
+validation and publishing automatically. Preview builds are disabled. The build
+token is managed in Cloudflare and is not stored in this repository.
 
 
 ## Content Security Policy
@@ -50,7 +50,7 @@ node scripts/update-csp.cjs --check
 node --test tests/*.test.cjs
 ```
 
-Commit the updated `vercel.json` with the HTML changes. Verify the Vercel preview's homepage, topic pages, story links, quotes, language selector and world clock before merging. The check detects stale hashes; it is a manual pre-publish check, not a configured CI gate.
+Commit the updated `vercel.json` with the HTML changes. Verify the homepage, topic pages, story links, quotes, language selector and world clock before merging. Cloudflare's production build runs the CSP check and tests before publishing; a failed check stops the deployment.
 
 Temporary preview probes use names beginning with `_` and are deliberately excluded from the inline-script allowlist. Remove them before publishing production. Do not add `unsafe-inline` or `unsafe-eval` to bypass a failed check.
 
